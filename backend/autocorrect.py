@@ -99,18 +99,7 @@ def autocad_points(filepath):
         start_y = round(line.dxf.start.y, 2)
         end_x = round(line.dxf.end.x, 2)
         end_y = round(line.dxf.end.y, 2)
-       
-        # # Get color - check multiple possible sources
-        # if line.dxf.hasattr('color') and line.dxf.color != 256:
-        #     color = line.dxf.color  
-        # else:
-        # # Color is ByLayer, so get it from the layer definition
-        #     try:
-        #         layer_obj = doc.layers.get(layer)
-        #         color = layer_obj.dxf.color
-        #     except:
-        #         color = 7  # Default to white if layer not foun
-
+    
         all_lines.append([layer, start_x, start_y, end_x, end_y])      
     
     # Extract POLYLINE data 
@@ -131,13 +120,13 @@ def autocad_points(filepath):
      line_mistake_refs, correct_line_refs) = filter.find_line_error(all_lines, all_walls, line_refs, line_properties, wall_slopes, wall_intercepts, tolerance=1)
     fixed_lines, fixed_lines_box, line_mistake_refs = filter.fix_line_mistakes(line_mistakes, line_mistake_refs)
     line_mistake_points = filter.find_fixed_line_points(line_mistakes, fixed_lines_box)
-    duplicate_line_refs = filter.remove_duplicate_lines(all_lines, line_refs)
+    duplicate_line_refs, line_duplicate_points = filter.remove_duplicate_lines(all_lines, line_refs)
 
     # scaled_blocks, mirrored_blocks = check_block_scaling(filepath)
     return (doc, on_line_points, all_lines_table, 
         wall_slope_intercept, filtered_walls, mistake_points, 
         final_corrected_blocks, line_mistakes, fixed_lines, final_corrected_refs, 
-        line_mistake_points, line_mistake_refs, duplicate_line_refs)
+        line_mistake_points, line_mistake_refs, duplicate_line_refs, line_duplicate_points)
 
 def extract_polyline_points(polyline): #Convert wall points into x and y points 
         if polyline.dxftype() == 'LWPOLYLINE':
@@ -150,11 +139,13 @@ def extract_polyline_points(polyline): #Convert wall points into x and y points
         return []
 
 def update_dxf_in_place(filepath, output_filepath):
+    #This function updates the dxf file, function updates Block reference and line positions based on corrections
+    # Red box is drawn around Block reference mistakes and a Red circle is drawn around line mistakes. 
 
     (doc, on_line_points, all_lines_table, 
         wall_slope_intercept, filtered_walls, mistake_points, 
         corrected_blocks, line_mistakes, fixed_lines, corrected_block_refs, 
-        line_mistake_points, line_mistake_refs, duplicate_line_refs) = autocad_points(filepath)
+        line_mistake_points, line_mistake_refs, duplicate_line_refs, duplicate_line_points) = autocad_points(filepath)
     
     msp = doc.modelspace()
 
@@ -185,6 +176,11 @@ def update_dxf_in_place(filepath, output_filepath):
     for entity in duplicate_line_refs:
         msp.delete_entity(entity)    
 
+    for line in duplicate_line_points: 
+        x_s, y_s, x_e, y_e = line 
+        draw_triangle(msp, x_s, y_s)
+        draw_triangle(msp, x_e, y_e)
+
     doc.saveas(output_filepath)
 
 def draw_red_box(msp, x, y, size):
@@ -196,4 +192,12 @@ def draw_red_box(msp, x, y, size):
         (x - size, y + size),
     ]
     msp.add_lwpolyline(corners, close=True, dxfattribs={'layer': 'CORRECTION_HIGHLIGHT', 'color': 1})
+
+def draw_triangle(msp, x, y): 
+    displacement = 60
+    point1 = x, y + displacement
+    point2 = x + displacement * math.cos(-0.523599), y + displacement * math.sin(-0.523599)
+    point3 = x + displacement * math.cos(3.66519), y + displacement * math.sin(3.66519)   
+    points = [point1, point2, point3]
+    msp.add_lwpolyline(points, close=True, dxfattribs={'layer': 'CORRECTION_HIGHLIGHT', 'color': 1})
 

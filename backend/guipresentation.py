@@ -1,6 +1,10 @@
 
 class presentation: 
-
+    #This class establishes lists to allow for neat presenation of results inside GUI
+    #This class contains two functions 
+    #combine_slope_walls: combines wall slopes lengths and intercepts into a singular list so can be passed through base_table.py and table_widget.py 
+    #what_line: Filters if poins are on the channel outline for presentation in GUI table. 
+    
     @staticmethod
     def combine_slope_walls(wall_lengths, slopes, y_intercepts): 
         #This function uses the zip function to combine lists so they can be put into the populate table function easily

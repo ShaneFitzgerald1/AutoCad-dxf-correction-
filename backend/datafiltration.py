@@ -2,20 +2,33 @@ import math
 from backend.mathematical import Mathematical
 
 maths = Mathematical
-
 class datafiltration: 
+    #Datafiltration filters all the data extracted from the autocad, it locates and fixes any mistakes that may arise 
+    #Possible mistakes the class corrects inlcude: Block refernce errors, Blockrefernce name errors (inocorrect pasting of blocks when making files causes blocks inside blocks),
+    # Line placement errors and duplicate lines 
+    #The class contains six functions 
+    # remove_duplicate_lines: removes any duplicates and ensures there are no repeats of identical lines 
+    # On_Channel_Outline: Corrects block references that are not located on any lines
+    # filter_name_errors: flags blocks that have a name error as a mistake
+    # find_line_error: Locates any line errors 
+    # fix_line_error: Fixes any line errors 
+    # find_fixed_line_points: Finds exact points that mistakes occur within lines so they are flagged in corrected dxf 
+
     @staticmethod
     def remove_duplicate_lines(all_lines, line_refs):
         #Function removes any duplicate lines ensuring there are no line repeats
         seen = []
         duplicate_refs = []
+        line_duplicates_points = []
         
         for idx, line in enumerate(all_lines):
+            _, x_start, y_start, x_end, y_end = line
             if line in seen:
                 duplicate_refs.append(line_refs[idx])
+                line_duplicates_points.append([x_start, y_start, x_end, y_end])
             seen.append(line)
 
-        return duplicate_refs
+        return duplicate_refs, line_duplicates_points
     
     @staticmethod
     def On_Channel_Line(Blockref_Points, all_walls, insert_refs, line_properties, tolerance=1, tolerance_2=5 ): 
@@ -23,7 +36,6 @@ class datafiltration:
     #If blcoks are within lines to a certain degree their position is fixed to the line using minimum perpendicular distance to a line
     #If there the block reference is near no lines an error is return 
     #Function inputs: Filepath, Tolerence1 (if something is within this its not a mistake), Tolerence2 if it falls within this and outside T1 its a mistake 
-
         filtered_blockref, filtered_walls, filtered_insert_refs = maths.Shape_outline(Blockref_Points, all_walls, insert_refs)
 
         blocks_on_line= []

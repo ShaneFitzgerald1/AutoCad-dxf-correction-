@@ -2,7 +2,15 @@ from sympy import symbols, Eq, solve
 import math
 
 class Mathematical:
-    
+    #This class does the backend maths calculations for the interface and updated dxf 
+    #This class contains six functison 
+    # wall_len: This calculates the length of walls 
+    # slope_vales: Function goes through different line situatiosn returning slope, intercept, start and end values fore each line and wall. 
+    # calc_slope: returns actual slope and intercept value so calculation does not need to be repeated for different scenarios 
+    # Shape_outline: Filters through all blocks and lines to ensure only data being picked up is wanted. 
+    # find_distance_to_line: Subs points into equation of a line 
+    # solve_simultaneous_equations: solves simealtaneous equations for where a point should be position on a line 
+
     @staticmethod
     def wall_len(all_lines):
         wall_lengths = []
@@ -54,7 +62,6 @@ class Mathematical:
             c = y1 - (slope * x1)
         return slope, c
     
-
     @staticmethod 
     def Shape_outline(Blockref_Points, all_walls, insert_refs):
         #This function Filters the Block References and Points to ensure any unwanted Points are not picked up 

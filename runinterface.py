@@ -156,7 +156,7 @@ class MyWindow(QMainWindow):
              self.all_lines_table, self.wall_slope_intercept, 
              self.filtered_walls, self.mistake_points, 
             self.corrected_blocks, self.line_mistakes, 
-            self.fixed_lines, _, _, _, _) = autocad_points(filepath)
+            self.fixed_lines, _, _, _, _, _) = autocad_points(filepath)
 
             self.create_results_tab()
 
