@@ -152,7 +152,7 @@ class MyWindow(QMainWindow):
         if filepath:
             self.original_filepath = filepath
 
-            (_, _, _, _, _, _, self.on_line_points, 
+            (_, self.on_line_points, 
              self.all_lines_table, self.wall_slope_intercept, 
              self.filtered_walls, self.mistake_points, 
             self.corrected_blocks, self.line_mistakes, 

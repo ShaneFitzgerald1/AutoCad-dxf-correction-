@@ -100,17 +100,18 @@ def autocad_points(filepath):
         end_x = round(line.dxf.end.x, 2)
         end_y = round(line.dxf.end.y, 2)
        
-        # Get color - check multiple possible sources
-        if line.dxf.hasattr('color') and line.dxf.color != 256:
-            color = line.dxf.color  
-        else:
-        # Color is ByLayer, so get it from the layer definition
-            try:
-                layer_obj = doc.layers.get(layer)
-                color = layer_obj.dxf.color
-            except:
-                color = 7  # Default to white if layer not foun
-        all_lines.append([layer, start_x, start_y, end_x, end_y, color, layer])      
+        # # Get color - check multiple possible sources
+        # if line.dxf.hasattr('color') and line.dxf.color != 256:
+        #     color = line.dxf.color  
+        # else:
+        # # Color is ByLayer, so get it from the layer definition
+        #     try:
+        #         layer_obj = doc.layers.get(layer)
+        #         color = layer_obj.dxf.color
+        #     except:
+        #         color = 7  # Default to white if layer not foun
+
+        all_lines.append([layer, start_x, start_y, end_x, end_y])      
     
     # Extract POLYLINE data 
     for polyline in msp.query('LWPOLYLINE[layer=="CHANNEL OUTLINE"]'):
@@ -120,10 +121,11 @@ def autocad_points(filepath):
     wall_lengths = maths.wall_len(all_lines)  
     slopes, y_intercepts, line_properties, wall_slopes, wall_intercepts = maths.slope_values(all_lines, all_walls) 
     wall_slope_intercept = pres.combine_slope_walls(wall_lengths, slopes, y_intercepts)
-    (blocks_on_line, mistake_points, correct_blocks, corrected_blocks,
-      correct_block_refs, corrected_block_refs, filtered_walls) = filter.On_Channel_Line(Blockref_Points, all_walls, insert_refs, line_properties, tolerance=1, tolerance_2=5)
-    (final_correct_blocks, final_correct_refs, 
-     final_corrected_blocks, final_corrected_refs) = filter.filter_name_errors(correct_blocks, correct_block_refs, corrected_blocks, corrected_block_refs)    
+    (blocks_on_line, mistake_points, final_corrected_blocks,
+     final_corrected_refs, filtered_walls) = filter.On_Channel_Line(Blockref_Points, all_walls, insert_refs, line_properties, tolerance=1, tolerance_2=5)
+    
+    # final_corrected_blocks, final_corrected_refs = filter.filter_name_errors(correct_blocks, correct_block_refs, corrected_blocks, corrected_block_refs)    
+
     on_line_points, all_lines_table = pres.what_line(blocks_on_line, filtered_walls, all_lines, tolerance = 1)
     (line_mistakes, correct_lines, 
      line_mistake_refs, correct_line_refs) = filter.find_line_error(all_lines, all_walls, line_refs, line_properties, wall_slopes, wall_intercepts, tolerance=1)
@@ -132,8 +134,7 @@ def autocad_points(filepath):
     duplicate_line_refs = filter.remove_duplicate_lines(all_lines, line_refs)
 
     # scaled_blocks, mirrored_blocks = check_block_scaling(filepath)
-    return (Blockref_Points, all_lines, all_walls, insert_refs, 
-        line_refs, doc, on_line_points, all_lines_table, 
+    return (doc, on_line_points, all_lines_table, 
         wall_slope_intercept, filtered_walls, mistake_points, 
         final_corrected_blocks, line_mistakes, fixed_lines, final_corrected_refs, 
         line_mistake_points, line_mistake_refs, duplicate_line_refs)
@@ -150,8 +151,7 @@ def extract_polyline_points(polyline): #Convert wall points into x and y points
 
 def update_dxf_in_place(filepath, output_filepath):
 
-    (Blockref_Points, all_lines, all_walls, insert_refs, 
-        line_refs, doc, on_line_points, all_lines_table, 
+    (doc, on_line_points, all_lines_table, 
         wall_slope_intercept, filtered_walls, mistake_points, 
         corrected_blocks, line_mistakes, fixed_lines, corrected_block_refs, 
         line_mistake_points, line_mistake_refs, duplicate_line_refs) = autocad_points(filepath)
@@ -167,7 +167,6 @@ def update_dxf_in_place(filepath, output_filepath):
         new_x, new_y = block_data[1], block_data[2]
         entity = corrected_block_refs[idx]
         entity.dxf.insert = (new_x, new_y)
-        # entity.dxf.insert = (x_final, y_final)
         entity.dxf.name = name 
         draw_red_box(msp, new_x, new_y, 80)
 
@@ -178,7 +177,7 @@ def update_dxf_in_place(filepath, output_filepath):
         entity = line_mistake_refs[idx]
         entity.dxf.start = (new_x_start, new_y_start)
         entity.dxf.end = (new_x_end, new_y_end)
-        
+
     for point in line_mistake_points:
         x, y = point[0], point[1]
         msp.add_circle(center=(x, y), radius=50, dxfattribs={"color": 1})

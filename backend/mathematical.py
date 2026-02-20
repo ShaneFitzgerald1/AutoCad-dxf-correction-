@@ -7,7 +7,7 @@ class Mathematical:
     def wall_len(all_lines):
         wall_lengths = []
         for line in all_lines:
-            name, x_start, y_start, x_end, y_end, color, layer = line
+            name, x_start, y_start, x_end, y_end = line
             delta_x = x_start - x_end
             delta_y = y_start - y_end
             distance = math.sqrt((delta_x)**2 + (delta_y)**2)
@@ -26,7 +26,7 @@ class Mathematical:
         wall_intercepts = []
 
         for line in all_lines: 
-            name, x_start, y_start, x_end, y_end, color, layer = line  
+            name, x_start, y_start, x_end, y_end = line  
             line_slopes, line_intercepts = Mathematical.calc_slope(x_start, y_start, x_end, y_end)
             slopes.append(line_slopes)
             y_intercepts.append(line_intercepts)

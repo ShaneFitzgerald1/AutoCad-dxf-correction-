@@ -89,14 +89,14 @@ class datafiltration:
                 for i in range(len(line_properties)):
                     slope, intercept, xs, ys, xe, ye = line_properties[i]
                     
-                    #Lines are being checked against the equation of lines of other lines, an equation of a line assumes a lines length is infinite throuhgh space
-                    #the below code stops checking lines that are far from the line being checked to be corrected onto that line 
+                    #Blocks are being checked against the equation of lines of other lines, an equation of a line assumes a lines length is infinite throuhgh space
+                    #the below code stops checking lines that are far from the block being checked to be corrected onto that line 
                     avoid_distant_lines = (xs <= x <= xe or xe <= x <= xs or ys <= y <= ye or ye <= y <= y)
                                 
                     min_distance = min(abs(x - xs), abs(x - xe),   #find miniumum distance to the line if not within the range    
                         abs(y - ys), abs(y - ye))
                     
-                    if not avoid_distant_lines and (min_distance > 5):  #if the line is not within the range of the line then check if it is within a tolerence, than skip that line
+                    if not avoid_distant_lines and (min_distance > 5):  #if the block is not within the range of the line then check if it is within a tolerence, than skip that line
                         continue 
 
                     # Case 1: Vertical line
@@ -145,9 +145,11 @@ class datafiltration:
                             break
             
             if not found_match: #No matches found at all within either tolerence return an error
-                blocks_on_line.append([name, x, y, angle, None, None, 'Not On Line', 'Error'])   
+                blocks_on_line.append([name, x, y, angle, None, None, 'Not On Line', 'Error']) 
+
+        final_corrected_blocks, final_corrected_refs = datafiltration.filter_name_errors(correct_blocks, correct_block_refs, corrected_blocks, corrected_block_refs)         
         
-        return blocks_on_line, mistake_points, correct_blocks, corrected_blocks, correct_block_refs, corrected_block_refs, filtered_walls
+        return blocks_on_line, mistake_points, final_corrected_blocks, final_corrected_refs, filtered_walls
     
     @staticmethod
     def filter_name_errors(correct_blocks, correct_block_refs, corrected_blocks, corrected_block_refs):
@@ -166,7 +168,7 @@ class datafiltration:
                 final_correct_blocks.append(block)
                 final_correct_refs.append(correct_block_refs[idx])
 
-        return final_correct_blocks, final_correct_refs, final_corrected_blocks, final_corrected_refs
+        return final_corrected_blocks, final_corrected_refs
     
     @staticmethod 
     def find_line_error(all_lines, all_walls, line_refs, line_properties, wall_slopes, wall_intercepts, tolerance=1): 
@@ -188,8 +190,6 @@ class datafiltration:
             y_start = line[2]
             x_end = line[3]
             y_end = line[4]
-            color = line[5]
-            layer = line[6]
 
             start_matches = False 
             end_matches = False 
@@ -207,7 +207,7 @@ class datafiltration:
             temp_end_slope = None
             temp_end_intercept = None
 
-            min_x = min(x for wall in all_walls for x, y in wall) 
+            min_x = min(x for wall in all_walls for x, y in wall) #finding the boundaries of the shape 
             min_y = min(y for wall in all_walls for x,y in wall)
             max_x = max(x for wall in all_walls for x, y in wall)
             max_y = max(y for wall in all_walls for x, y in wall)
@@ -243,7 +243,7 @@ class datafiltration:
                         break
 
             if wall_line_match: # if the wall is completly on the channel outline skip checking against the other lines 
-                correct_lines.append([name, x_start, y_start, x_end, y_end, color, layer])
+                correct_lines.append([name, x_start, y_start, x_end, y_end])
                 correct_line_refs.append(line_refs[idx])
                 continue  # Skip to next line
 
@@ -320,10 +320,10 @@ class datafiltration:
                 end_matches = True 
             
             if not start_matches or not end_matches:  
-                line_mistakes.append([name, x_start, y_start, x_end, y_end, color, layer, closest_start_slope, closest_start_intercept, closest_end_slope, closest_end_intercept])
+                line_mistakes.append([name, x_start, y_start, x_end, y_end, closest_start_slope, closest_start_intercept, closest_end_slope, closest_end_intercept])
                 line_mistake_refs.append(line_refs[idx])
             else: 
-                correct_lines.append([name, x_start, y_start, x_end, y_end, color, layer])   
+                correct_lines.append([name, x_start, y_start, x_end, y_end])   
                 correct_line_refs.append(line_refs[idx])          
 
         return line_mistakes, correct_lines, line_mistake_refs, correct_line_refs
@@ -342,12 +342,10 @@ class datafiltration:
             y_start = line[2]
             x_end = line[3]
             y_end = line[4]
-            color = line[5]
-            layer = line[6]
-            closest_start_slope = line[7]
-            closest_start_intercept = line[8]
-            closest_end_slope = line[9]
-            closest_end_intercept = line[10]
+            closest_start_slope = line[5]
+            closest_start_intercept = line[6]
+            closest_end_slope = line[7]
+            closest_end_intercept = line[8]
         
             #Basically if line is too far away form anything leave it as it is (it is supposed to be like that)
             if (closest_start_slope is None and closest_start_intercept is None) or (closest_end_slope is None and closest_end_intercept is None): 
@@ -356,8 +354,8 @@ class datafiltration:
                 new_x_end = x_end
                 new_y_end = y_end
 
-                fixed_lines.append([name, new_x_start, new_y_start, new_x_end, new_y_end, color, layer]) #Append these results so they are no longer checked
-                fixed_lines_box.append([name, new_x_start, new_y_start, new_x_end, new_y_end, color, layer, closest_start_slope, closest_start_intercept, closest_end_slope, closest_end_intercept])
+                fixed_lines.append([name, new_x_start, new_y_start, new_x_end, new_y_end]) #Append these results so they are no longer checked
+                fixed_lines_box.append([name, new_x_start, new_y_start, new_x_end, new_y_end, closest_start_slope, closest_start_intercept, closest_end_slope, closest_end_intercept])
                 continue
 
             elif x_start == x_end:  # Vertical line
@@ -400,8 +398,8 @@ class datafiltration:
                 else: #Both lines have slopes call sim eq func 
                     new_x_end, new_y_end = maths.solve_simultaneous_equations(closest_end_slope, closest_end_intercept, slope_line, intercept_line)
 
-            fixed_lines.append([name, new_x_start, new_y_start, new_x_end, new_y_end, color, layer])
-            fixed_lines_box.append([name, new_x_start, new_y_start, new_x_end, new_y_end, color, layer, closest_start_slope, closest_start_intercept, closest_end_slope, closest_end_intercept])
+            fixed_lines.append([name, new_x_start, new_y_start, new_x_end, new_y_end])
+            fixed_lines_box.append([name, new_x_start, new_y_start, new_x_end, new_y_end, closest_start_slope, closest_start_intercept, closest_end_slope, closest_end_intercept])
             
         return fixed_lines, fixed_lines_box, line_mistake_refs
     
@@ -428,10 +426,10 @@ class datafiltration:
             y_start_f = fixed_line[2]
             x_end_f = fixed_line[3]
             y_end_f = fixed_line[4]
-            cl_st_slope = fixed_line[7]
-            cl_st_intercept = fixed_line[8]
-            cl_ed_slope = fixed_line[9]
-            cl_ed_intercept = fixed_line[10]
+            cl_st_slope = fixed_line[5]
+            cl_st_intercept = fixed_line[6]
+            cl_ed_slope = fixed_line[7]
+            cl_ed_intercept = fixed_line[8]
 
             if abs(x_start_m - x_start_f) >= 0.1 or abs(y_start_m - y_start_f) >= 0.1: 
                 line_mistake_points.append([x_start_f, y_start_f])
