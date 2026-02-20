@@ -314,7 +314,7 @@ class datafiltration:
                 closest_end_slope = temp_end_slope
                 closest_end_intercept = temp_end_intercept
             elif 25 < min_end_dist < 35:
-                closest_end_slope = None
+                closest_end_slope = None    
                 closest_end_intercept = None
             elif min_end_dist > 35: 
                 end_matches = True 
