@@ -10,15 +10,17 @@ from dataclasses import dataclass
 from backend.mathematical import Mathematical
 from backend.guipresentation import presentation
 from backend.datafiltration import datafiltration
+from db_objects import before_after
 
 maths = Mathematical()
 pres = presentation() 
 filter = datafiltration()
 
 def autocad_points(filepath): 
-    #This function extracts all necessasry data for analysis from the autocad file. 
-    # Inputs are filepath (the autocad file itself)
-    #Outputs are: Block references points, DiagonalBrace_Points (start and end position of all lines), All Walls (Wall points, points on the channel outline)
+    """This function extracts all necessasry data for analysis from the autocad file. 
+       Inputs are filepath (the autocad file itself)
+       Outputs are: Block references points, DiagonalBrace_Points (start and end position of all lines), All Walls (Wall points, points on the channel outline)"""
+
     doc = ezdxf.readfile(filepath)
     msp = doc.modelspace()
     
@@ -29,6 +31,8 @@ def autocad_points(filepath):
     line_refs = []
     block_names = []
     new_names = []
+    layers = []
+
    
     for insert in msp.query('INSERT'): 
         insert_refs.append(insert)
@@ -87,8 +91,10 @@ def autocad_points(filepath):
              
         if offset_found: 
             Blockref_Points.append([new_name, x_final, y_final, angle, name_error])
+
         else: 
             Blockref_Points.append([name, x, y, angle, name_error])
+        
 
     # Extract LINE data
     for line in msp.query('LINE'):
@@ -99,22 +105,24 @@ def autocad_points(filepath):
         start_y = round(line.dxf.start.y, 2)
         end_x = round(line.dxf.end.x, 2)
         end_y = round(line.dxf.end.y, 2)
-    
-        all_lines.append([layer, start_x, start_y, end_x, end_y])      
+        layers.append([layer])
+        all_lines.append([layer, start_x, start_y, end_x, end_y])     
+
     
     # Extract POLYLINE data 
     for polyline in msp.query('LWPOLYLINE[layer=="CHANNEL OUTLINE"]'):
         points = extract_polyline_points(polyline)
         all_walls.append(points)
 
+    # print(f'{len(acc_blocks)} were accepted and {len(rej_blocks)} were rejected based on name properties') 
+    # print(f'These are rej blocks {rej_blocks}')   
+
     wall_lengths = maths.wall_len(all_lines)  
     slopes, y_intercepts, line_properties, wall_slopes, wall_intercepts = maths.slope_values(all_lines, all_walls) 
     wall_slope_intercept = pres.combine_slope_walls(wall_lengths, slopes, y_intercepts)
     (blocks_on_line, mistake_points, final_corrected_blocks,
-     final_corrected_refs, filtered_walls) = filter.On_Channel_Line(Blockref_Points, all_walls, insert_refs, line_properties, tolerance=1, tolerance_2=5)
-    
-    # final_corrected_blocks, final_corrected_refs = filter.filter_name_errors(correct_blocks, correct_block_refs, corrected_blocks, corrected_block_refs)    
-
+     final_corrected_refs, filtered_walls, 
+     correct_blocks, fixed_all_blocks) = filter.On_Channel_Line(Blockref_Points, all_walls, insert_refs, line_properties, tolerance=1, tolerance_2=5)
     on_line_points, all_lines_table = pres.what_line(blocks_on_line, filtered_walls, all_lines, tolerance = 1)
     (line_mistakes, correct_lines, 
      line_mistake_refs, correct_line_refs) = filter.find_line_error(all_lines, all_walls, line_refs, line_properties, wall_slopes, wall_intercepts, tolerance=1)
@@ -122,6 +130,22 @@ def autocad_points(filepath):
     line_mistake_points = filter.find_fixed_line_points(line_mistakes, fixed_lines_box)
     duplicate_line_refs, line_duplicate_points = filter.remove_duplicate_lines(all_lines, line_refs)
 
+    filtered_blockref, filtered_walls, filtered_insert_refs  = maths.Shape_outline(Blockref_Points, all_walls, insert_refs)
+
+    before_after(fixed_all_blocks, filtered_blockref, all_lines, correct_lines, fixed_lines, wall_slopes, wall_intercepts, all_walls, line_refs)
+
+    # accepted_blocks, rejected_blocks = name_match_block(filtered_blockref, all_lines, 'INSERT', wall_slopes, wall_intercepts, all_walls, line_refs)
+    # print(f'{len(accepted_blocks)} were accepted and {len(rejected_blocks)} were rejected')
+    # for block in rejected_blocks: 
+    #     name, x, y, rejection_reason = block 
+    #     print(f'Block: {(name), (x), (y)}: {rejection_reason}')
+    # accepted_lines, rejected_lines = name_match_block(filtered_blockref, all_lines, 'LINE', wall_slopes, wall_intercepts, all_walls, line_refs)     
+    # print(f'Amount of correct line {len(accepted_lines)}')
+    # print(f'Amount of rejected lines {len(rejected_lines)}')
+    # for line in rejected_lines: 
+    #     name, x_s, y_s, x_e, y_e, rejection_reason = line 
+    #     print(f'Line{name, x_s, y_s, x_e, y_e,}; {rejection_reason}')
+    
     # scaled_blocks, mirrored_blocks = check_block_scaling(filepath)
     return (doc, on_line_points, all_lines_table, 
         wall_slope_intercept, filtered_walls, mistake_points, 
@@ -139,8 +163,8 @@ def extract_polyline_points(polyline): #Convert wall points into x and y points
         return []
 
 def update_dxf_in_place(filepath, output_filepath):
-    #This function updates the dxf file, function updates Block reference and line positions based on corrections
-    # Red box is drawn around Block reference mistakes and a Red circle is drawn around line mistakes. 
+    """This function updates the dxf file, function updates Block reference and line positions based on corrections
+    Red box is drawn around Block reference mistakes and a Red circle is drawn around line mistakes. """
 
     (doc, on_line_points, all_lines_table, 
         wall_slope_intercept, filtered_walls, mistake_points, 
@@ -194,10 +218,11 @@ def draw_red_box(msp, x, y, size):
     msp.add_lwpolyline(corners, close=True, dxfattribs={'layer': 'CORRECTION_HIGHLIGHT', 'color': 1})
 
 def draw_triangle(msp, x, y): 
+    """Draws triangle around end points of where duplicate line occured"""
     displacement = 60
-    point1 = x, y + displacement
-    point2 = x + displacement * math.cos(-0.523599), y + displacement * math.sin(-0.523599)
-    point3 = x + displacement * math.cos(3.66519), y + displacement * math.sin(3.66519)   
+    point1 = x, y + displacement #90 degrees 
+    point2 = x + displacement * math.cos(-0.523599), y + displacement * math.sin(-0.523599) # -30 degrees 
+    point3 = x + displacement * math.cos(3.66519), y + displacement * math.sin(3.66519)   # -150 degrees 
     points = [point1, point2, point3]
     msp.add_lwpolyline(points, close=True, dxfattribs={'layer': 'CORRECTION_HIGHLIGHT', 'color': 1})
 

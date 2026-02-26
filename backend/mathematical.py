@@ -1,15 +1,16 @@
 from sympy import symbols, Eq, solve
 import math
 
+
 class Mathematical:
-    #This class does the backend maths calculations for the interface and updated dxf 
-    #This class contains six functison 
-    # wall_len: This calculates the length of walls 
-    # slope_vales: Function goes through different line situatiosn returning slope, intercept, start and end values fore each line and wall. 
-    # calc_slope: returns actual slope and intercept value so calculation does not need to be repeated for different scenarios 
-    # Shape_outline: Filters through all blocks and lines to ensure only data being picked up is wanted. 
-    # find_distance_to_line: Subs points into equation of a line 
-    # solve_simultaneous_equations: solves simealtaneous equations for where a point should be position on a line 
+    """This class does the backend maths calculations for the interface and updated dxf 
+       This class contains six functison 
+       wall_len: This calculates the length of walls 
+       slope_vales: Function goes through different line situatiosn returning slope, intercept, start and end values fore each line and wall. 
+       calc_slope: returns actual slope and intercept value so calculation does not need to be repeated for different scenarios 
+       Shape_outline: Filters through all blocks and lines to ensure only data being picked up is wanted. 
+       find_distance_to_line: Subs points into equation of a line 
+       solve_simultaneous_equations: solves simealtaneous equations for where a point should be position on a line """
 
     @staticmethod
     def wall_len(all_lines):
@@ -23,9 +24,10 @@ class Mathematical:
         return wall_lengths
     
     @staticmethod
-    def slope_values(all_lines, all_walls):  #takes all lines and all_walls from autocad 
-    #This function creates the equation of the line for each line (Channel outline and interior lines)
-    #Functions accounts for vertical lines
+    def slope_values(all_lines, all_walls):
+        #takes all lines and all_walls from autocad 
+        #This function creates the equation of the line for each line (Channel outline and interior lines)
+        #Functions accounts for vertical lines
 
         slopes = [] 
         y_intercepts = []
@@ -74,7 +76,7 @@ class Mathematical:
             y = block[2]
             angle = block[3]
             name_error = block[4]
-        
+            
             if 10 <= x <= 300000 and 10 <= y <= 300000: 
                 filtered_blockref.append([name, x, y, angle, name_error])
                 filtered_insert_refs.append(insert_refs[idx])  # ← Filter refs too
@@ -96,6 +98,7 @@ class Mathematical:
                     filtered_walls.append([x, y])
 
         return filtered_blockref, filtered_walls, filtered_insert_refs  
+    
 
     @staticmethod
     def find_distance_to_line(x_point, y_point, slope, intercept):
@@ -112,3 +115,89 @@ class Mathematical:
         eq2 = Eq(y, slope_line * x + intercept_line)
         solution = solve((eq1, eq2), (x, y))
         return float(solution[x]), float(solution[y])
+    
+    @staticmethod
+    def Channel_check_block(wall_slopes, wall_intercepts, blockrefs): 
+        blocks = []
+
+        for block in blockrefs: 
+            block_name, x, y, angle, _ = block 
+            on_channel = 'No'
+
+            for i in range(len(wall_slopes)): 
+                wall_slope = wall_slopes[i]
+                wall_intercept = wall_intercepts[i]
+
+                if wall_slope is None: 
+                    x_intercept = float(wall_intercept.split()[2])
+                    x_d = abs(x_intercept - x)
+                    if x_d < 0.5: 
+                        on_channel = 'Yes'
+                        break       
+                else: 
+                    y_d = abs(y - (wall_slope * x + wall_intercept))
+                    if y_d < 0.5: 
+                        on_channel = 'Yes'
+                        break 
+
+            blocks.append([block_name, x, y, angle, on_channel])
+        return blocks
+
+    @staticmethod
+    def Chanel_check_line(wall_slopes, wall_intercepts, lines, all_walls, line_refs): 
+        lines_OCO = []
+        lines_OCO_refs = []
+        lines_not_OCO = []
+        lines_not_OCO_refs = []
+        lines_cl = []
+
+
+        for idx, line in enumerate(lines): 
+            name, x_start, y_start, x_end, y_end = line
+
+            min_x = min(x for wall in all_walls for x, y in wall) #finding the boundaries of the shape 
+            min_y = min(y for wall in all_walls for x,y in wall)
+            max_x = max(x for wall in all_walls for x, y in wall)
+            max_y = max(y for wall in all_walls for x, y in wall)
+
+            # Check boundaries ONCE (no loop needed)
+            if (x_start < (min_x - 0.1) or x_start > (max_x + 0.1) or y_start < (min_y- 0.1) or y_start > (max_y + 0.1) or
+                x_end < (min_x - 0.1) or x_end > (max_x + 0.1) or y_end < (min_y - 0.1) or y_end > (max_y + 0.1)):
+                lines_not_OCO.append([name, x_start, y_start, x_end, y_end])
+                lines_not_OCO_refs.append(line_refs[idx])
+                lines_cl.append([name, x_start, y_start, x_end, y_end, 'No'])
+                
+                continue
+            on_channel_outline = False 
+
+            for i in range(len(wall_slopes)): 
+                wall_slope = wall_slopes[i]
+                wall_intercept = wall_intercepts[i]
+                
+                # Main check for a point on the channel outline
+                if wall_slope is None:  # Vertical wall
+                    x_intercept = float(wall_intercept.split()[2]) 
+                    x_sd = abs(x_intercept - x_start)
+                    x_ed = abs(x_intercept - x_end)
+                    if x_ed < 0.1 and x_sd < 0.1:
+                        on_channel_outline = True 
+                        break
+                      
+                else:  # Wall with slope
+                    y_ss = abs(y_start - (wall_slope * x_start + wall_intercept))
+                    y_ee = abs(y_end - (wall_slope * x_end + wall_intercept))
+                    if y_ss < 0.1 and y_ee < 0.1: 
+                        on_channel_outline = True 
+                        break
+
+            if on_channel_outline: 
+                lines_OCO.append([name, x_start, y_start, x_end, y_end])
+                lines_OCO_refs.append(line_refs[idx]) 
+                lines_cl.append([name, x_start, y_start, x_end, y_end, 'Yes'])
+            else: 
+                lines_not_OCO.append([name, x_start, y_start, x_end, y_end]) 
+                lines_not_OCO_refs.append(line_refs[idx])   
+                lines_cl.append([name, x_start, y_start, x_end, y_end, 'No'])
+
+        return lines_OCO, lines_not_OCO, lines_OCO_refs, lines_not_OCO_refs, lines_cl                  
+            
