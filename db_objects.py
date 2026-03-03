@@ -1,16 +1,4 @@
-"""
-db_queries.py
--------------
-All database query and write functions used by the main application.
-Import this file wherever database access is needed.
-
-Main functions:
-    get_catalogue()         - Load all known objects into a lookup dictionary (call once on file import)
-    add_new_object()        - Add a newly accepted unknown object to the database
-    object_exists()         - Check if a single name exists in the database
-"""
-
-from database.db_models import Session, ObjectID
+from database.db_models import Session, ObjectID, CategoryLineRule
 from backend.mathematical import Mathematical
 maths = Mathematical()
 
@@ -22,8 +10,6 @@ def get_catalogue():
         all_objects = session.query(ObjectID).all()
         for obj in all_objects:
             objects.append([obj.name, obj.type, obj.category, obj.on_channel_outline ])
- 
-        # print(f"Catalogue loaded: {len(objects)} known objects from database.")
         return objects
     except Exception as e:
         print(f"Warning: Could not load catalogue from database: {e}")
@@ -31,9 +17,31 @@ def get_catalogue():
     finally:
         session.close()
 
+def get_category_catalogue(): 
+
+    categories = []
+    session = Session() 
+    try:
+        all_categories = session.query(CategoryLineRule).all()
+        for cat in all_categories:
+            categories.append([cat.category, cat.allowed_connections, cat.double_connection ])
+        return categories
+    
+    except Exception as e:
+        print(f"Warning: Could not load catalogue from database: {e}")
+        return [] 
+    finally:
+        session.close()   
+
+categories = get_category_catalogue() 
+print(f'These are the categories {categories}')
+
+       
+
 
 def name_match_block(blockrefs, lines, actual_type, wall_slopes, wall_intercepts, all_walls, line_refs): 
     blocks = maths.Channel_check_block(wall_slopes, wall_intercepts, blockrefs)
+
     _, _, _, _, lines_cl = maths.Chanel_check_line(wall_slopes, wall_intercepts, lines, all_walls, line_refs)
     objects = get_catalogue()
     accepted_block_names = []
@@ -41,9 +49,13 @@ def name_match_block(blockrefs, lines, actual_type, wall_slopes, wall_intercepts
     accepted_line_names = []
     rejected_line_names = []
 
+
     # Build lookup lists from catalogue
     valid_insert_names = []
     valid_line_names = []
+
+    # print(f'These are the objects{objects}')
+    # print(f'Amount of objects {len(objects)}')
 
     for object in objects:
         name, type, category, on_channel_outline = object
@@ -59,7 +71,7 @@ def name_match_block(blockrefs, lines, actual_type, wall_slopes, wall_intercepts
             channel_verification = False
 
             for name, on_channel_outline in valid_insert_names:
-                if actual_name == name:
+                if actual_name.upper() == name.upper():
                     matched = True
                     if on_channel == 'Yes' and on_channel_outline == 'Yes':
                         channel_verification = True
@@ -85,7 +97,7 @@ def name_match_block(blockrefs, lines, actual_type, wall_slopes, wall_intercepts
             channel_verified = False
 
             for name, on_channel_outline in valid_line_names:
-                if actual_l_name == name:
+                if actual_l_name.upper() == name.upper():
                     line_matched = True
                     if on_channel == 'Yes' and on_channel_outline == 'Yes':
                         channel_verified = True
@@ -97,30 +109,24 @@ def name_match_block(blockrefs, lines, actual_type, wall_slopes, wall_intercepts
                 accepted_line_names.append(actual_l_name)
             if line_matched and not channel_verified:
                 rejected_line_names.append([actual_l_name, x_s, y_s, x_e, y_e, 'Line rejected due to not being in expected position'])
-            if not line_matched and channel_verified:
-                rejected_line_names.append([actual_l_name, x_s, y_s, x_e, y_e,'Unexpected Line name'])
             if not line_matched and not channel_verified:
-                rejected_line_names.append([actual_l_name, x_s, y_s, x_e, y_e, 'Line rejected due to unexpected position and Line name'])
+                rejected_line_names.append([actual_l_name, x_s, y_s, x_e, y_e, f'Line rejected: {actual_l_name} is not present in the DataBase'])
 
         return accepted_line_names, rejected_line_names
     
 
 def before_after(fixed_all_blocks, blockrefs, lines, correct_lines, fixed_lines, wall_slopes, wall_intercepts, all_walls, line_refs):
         
-    correct_lines.extend(fixed_lines)
-    all_lines_fixed = idk 
-    print(f'These are all lines fixed {correct_lines}')
-    print(f'Total correct lines {len(correct_lines)}')
-    print(f'Total lines {len(lines)}')
-
+    # correct_lines.extend(fixed_lines)
+    all_correct_lines = correct_lines + fixed_lines
 
     #These are all the accepted blocks and lines before they are passed through the correction code 
     initial_accepted_blocks, initial_rejected_blocks = name_match_block(blockrefs, lines, 'INSERT', wall_slopes, wall_intercepts, all_walls, line_refs)
     initial_accepted_line, initial_rejected_lines = name_match_block(blockrefs, lines, 'LINE', wall_slopes, wall_intercepts, all_walls, line_refs)
 
     #All accepted and rejected blocks post check, if an error arised here this is a big issue
-    post_accepted_block, post_rejected_block = name_match_block(fixed_all_blocks, lines, 'INSERT', wall_slopes, wall_intercepts, all_walls, line_refs)
-    post_accepted_line, post_rejected_lines = name_match_block(fixed_all_blocks, lines, 'LINE', wall_slopes, wall_intercepts, all_walls, line_refs)
+    post_accepted_block, post_rejected_block = name_match_block(fixed_all_blocks, all_correct_lines, 'INSERT', wall_slopes, wall_intercepts, all_walls, line_refs)
+    post_accepted_line, post_rejected_lines = name_match_block(fixed_all_blocks, all_correct_lines, 'LINE', wall_slopes, wall_intercepts, all_walls, line_refs)
 
     print(f'There are initially {len(initial_accepted_blocks)} Accepted Blocks and {len(initial_rejected_blocks)} Rejected Blocks ')
     for block in initial_rejected_blocks: 
@@ -137,23 +143,173 @@ def before_after(fixed_all_blocks, blockrefs, lines, correct_lines, fixed_lines,
         name, x, y, rejection_reason = block 
         print(f'Block: {(name), (x), (y)}: {rejection_reason}')
 
-    print(f'Post correction there are {len(post_accepted_block)} Accepted Lines and {len(post_rejected_block)} Rejected Lines ')
+    print(f'Post correction there are {len(post_accepted_line)} Accepted Lines and {len(post_rejected_lines)} Rejected Lines ')
     for line in post_rejected_lines: 
         name, xs, ys, xe, ye, rejection_reason = line 
         print(f'Line: {(name), (xs), (ys), (xe), (ye)}: {rejection_reason}')    
 
 
 
+def categories_sorter(line_connections): 
+    category_list = [] 
 
-                
+    for line in line_connections: 
+        line_name, line_start_entity, line_end_entity = line 
 
+        line_category = get_category(line_name)
+        line_start_category = get_category(line_start_entity)
+        line_end_category = get_category(line_end_entity)
+
+        category_list.append([line_name, line_category, line_start_category, line_end_category])
+
+    return category_list     
+
+    
+def get_category(line_name): 
+    objects = get_catalogue()
+    for object in objects: 
+        object_name, type, category, on_channel_outline = object 
+        if line_name == object_name: 
+            return category 
+    return None 
+
+
+def validate_categories(line_line_connections, line_block_connections):
+    categories = get_category_catalogue() 
+    ll_connections = categories_sorter(line_line_connections)
+    lb_connections = categories_sorter(line_block_connections)
+    all_connections = ll_connections + lb_connections
+    correct_connections = []
+    mand_fail = []
+    quantity_fail = []
+    both_fail = []
+
+    for line in all_connections: 
+        line_name, line_category, line_start_category, line_end_category = line 
+        safe_connections = False 
+        untrue_quantity_connections = False 
+
+        for categor in categories: 
+            cat, allowed_connections, double_connection = categor
+
+            if allowed_connections:
+                allowed_list = [a.strip() for a in allowed_connections.split(',')]
+            else:
+                allowed_list = [] 
+
+            if cat == line_category: 
+                if line_start_category in allowed_list and line_end_category in allowed_list:  
+                    safe_connections = True 
+
+                if double_connection == 'Yes': 
+                    if line_start_category is None or line_end_category is None: 
+                        untrue_quantity_connections = True 
+                if double_connection == 'No': 
+                    if line_start_category is not None and line_end_category is not None: 
+                        untrue_quantity_connections = True    
+
+        if safe_connections and not untrue_quantity_connections: 
+            correct_connections.append([line_name])  
+        if not safe_connections and not untrue_quantity_connections: 
+            mand_fail.append([line_name])
+        if safe_connections and untrue_quantity_connections: 
+            quantity_fail.append([line_name])
+        if not safe_connections and untrue_quantity_connections: 
+            both_fail.append([line_name])
+
+    print(f'{len(correct_connections)} were approved by the DataBase')
+    print(f'{len(mand_fail)} were disapproved due to lines ending on incorrect lines/objects')
+    print(f'{len(quantity_fail)} were disapproved due to lines not ending on lines/objects')
+    print(f'{len(both_fail)} were disapproved due to lines not ending on lines/objects and ending on incorrect object')
+    
     
 
 
 
 
 
+
                 
+                
+
+
+
+
+
+def validate_category_database(line_line_connections, line_block_connections): 
+    category_list_line = []
+    category_list_block = []
+    objects = get_catalogue()
+    categories = get_category_catalogue() 
+
+    for line in line_line_connections: 
+        line_name, line_start_name, line_end_name = line 
+
+        for object in objects: 
+            name, type, category, on_channel_outline = object 
+            if line_name == name: 
+                category_list_line.append([line_name, line_start_name, line_end_name, category, on_channel_outline])
+
+    for line in line_block_connections: 
+        line_name, block_name_start, block_name_end = line 
+
+        for object in objects: 
+            name, type, category, on_channel_outline = object 
+            if line_name == name: 
+                category_list_block.append([line_name, block_name_start, block_name_end, category, on_channel_outline])       
+
+    for line in category_list_line: 
+        line_name, line_start_name, line_end_name, category, on_channel_outline = line 
+
+
+        for categor in categories: 
+            cat, allowed_connections, double_connection = categor
+
+            if allowed_connections:
+                allowed_list = [a.strip() for a in allowed_connections.split(',')]
+            else:
+                allowed_list = [] 
+
+            if cat == category:  # ✅ now outside the else
+                if line_start_name in allowed_list and line_end_name in allowed_list:  
+                    print(f'{line_name} was verified')
+
+
+
+
+
+
+        
+
+
+
+
+# def add_new_object(name, obj_type, category, on_channel_outline):
+#     session = Session() 
+#     new_obj = ObjectID(name=name,
+#             type=obj_type,
+#             category=category,
+#             on_channel_outline=on_channel_outline) 
+#     session.add(new_obj)
+#     session.commit()
+#     session.close() 
+
+# add_new_object('305 TRUSS LINE', 'LINE', 'TRUSS', 'No' )               
+
+    
+# def remove_object(name):
+#     session = Session()
+#     obj = session.query(ObjectID).filter_by(name=name).first()
+#     if obj:
+#         session.delete(obj)
+#         session.commit()
+#         print(f"Removed: {name}")
+#     else:
+#         print(f"Not found: {name}")
+#     session.close()
+
+# remove_object('305 TRUSS LINE')
+            
 
 
 

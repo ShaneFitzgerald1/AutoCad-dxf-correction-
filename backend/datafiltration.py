@@ -46,8 +46,7 @@ class datafiltration:
         corrected_blocks = []
         correct_block_refs = []
         corrected_block_refs = []
-        all_blocks_correct = []
-    
+
         # Use enumerate to get both index and block data
         for idx, block in enumerate(filtered_blockref):
             name = block[0]
@@ -73,7 +72,7 @@ class datafiltration:
             
             #Situation 1: Check for exact matches (within tolerance)
             for i in range(len(line_properties)):
-                slope, intercept, xs, ys, xe, ye = line_properties[i]
+                line_name, slope, intercept, xs, ys, xe, ye = line_properties[i]
         
                 # Case 1: Vertical line
                 if slope is None:
@@ -84,7 +83,6 @@ class datafiltration:
                         blocks_on_line.append([name, x, y, angle, i, 'vertical', 'On Line', 'Exact'])  #store for interface table presentation 
                         correct_blocks.append([name, x, y, angle, name_error])   #Store for creating new dxf 
                         correct_block_refs.append(filtered_insert_refs[idx])  # ← Use filtered refs with idx
-                        all_blocks_correct.append([name, x, y, angle, name_error])
                         found_match = True
                         break
                 
@@ -97,14 +95,13 @@ class datafiltration:
                         blocks_on_line.append([name, x, y, angle, i, 'normal', 'On Line', 'Exact'])
                         correct_blocks.append([name, x, y, angle, name_error])
                         correct_block_refs.append(filtered_insert_refs[idx])  # ← Use filtered refs with idx
-                        all_blocks_correct.append([name, x, y, angle, name_error])
                         found_match = True
                         break
             
             #Situation 2: Look for near matches 
             if not found_match:
                 for i in range(len(line_properties)):
-                    slope, intercept, xs, ys, xe, ye = line_properties[i]
+                    line_name, slope, intercept, xs, ys, xe, ye = line_properties[i]
                     
                     #Blocks are being checked against the equation of lines of other lines, an equation of a line assumes a lines length is infinite throuhgh space
                     #the below code stops checking lines that are far from the block being checked to be corrected onto that line 
@@ -128,13 +125,12 @@ class datafiltration:
                                 mistake_points.append([name, x, y, closest_corner[0], closest_corner[1]])   #Store for interface presnetaion 
                                 corrected_blocks.append([name, closest_corner[0], closest_corner[1], angle, name_error]) #Store for dxf 
                                 corrected_block_refs.append(filtered_insert_refs[idx])  # ← Use filtered refs with idx
-                                all_blocks_correct.append([name, x, y, angle, name_error])
-
+                              
                             else:
                                 mistake_points.append([name, x, y, x_intercept, y])  #Store for Interface Presentation
                                 corrected_blocks.append([name, x_intercept, y, angle, name_error])   # Store for dxf 
                                 corrected_block_refs.append(filtered_insert_refs[idx])  # ← Use filtered refs with idx
-                                all_blocks_correct.append([name, x, y, angle, name_error])
+                           
                             
                             found_match = True
                             break
@@ -151,7 +147,7 @@ class datafiltration:
                                 mistake_points.append([name, x, y, closest_corner[0], closest_corner[1]])
                                 corrected_blocks.append([name, closest_corner[0], closest_corner[1], angle, name_error])
                                 corrected_block_refs.append(filtered_insert_refs[idx])  # ← Use filtered refs with idx
-                                all_blocks_correct.append([name, x, y, angle, name_error])
+                               
 
                             else: #We have a Point and  a slope, the below finds the minimum perpendicular distance from the orignal point to that line
                                 #The code returns the x and y points on that line where the intersection occurs, thus becoming the fixed point. 
@@ -160,7 +156,6 @@ class datafiltration:
                                 mistake_points.append([name, x, y, x_fixed, y_fixed])
                                 corrected_blocks.append([name, x_fixed, y_fixed, angle, name_error])
                                 corrected_block_refs.append(filtered_insert_refs[idx])  # ← Use filtered refs with idx
-                                all_blocks_correct.append([name, x, y, angle, name_error])
                         
                             found_match = True
                             break
@@ -168,9 +163,11 @@ class datafiltration:
             if not found_match: #No matches found at all within either tolerence return an error
                 blocks_on_line.append([name, x, y, angle, None, None, 'Not On Line', 'Error']) 
 
-        final_corrected_blocks, final_corrected_refs = datafiltration.filter_name_errors(correct_blocks, correct_block_refs, corrected_blocks, corrected_block_refs)         
+        final_correct_blocks, final_corrected_blocks, final_corrected_refs = datafiltration.filter_name_errors(correct_blocks, correct_block_refs, corrected_blocks, corrected_block_refs)  
+
+        all_blocks_correct_test = final_correct_blocks + final_corrected_blocks
         
-        return blocks_on_line, mistake_points, final_corrected_blocks, final_corrected_refs, filtered_walls, correct_blocks, all_blocks_correct
+        return blocks_on_line, mistake_points, final_corrected_blocks, final_corrected_refs, filtered_walls, correct_blocks, all_blocks_correct_test
     
     @staticmethod
     def filter_name_errors(correct_blocks, correct_block_refs, corrected_blocks, corrected_block_refs):
@@ -189,7 +186,7 @@ class datafiltration:
                 final_correct_blocks.append(block)
                 final_correct_refs.append(correct_block_refs[idx])
 
-        return final_corrected_blocks, final_corrected_refs
+        return final_correct_blocks, final_corrected_blocks, final_corrected_refs
     
     @staticmethod 
     def find_line_error(all_lines, all_walls, line_refs, line_properties, wall_slopes, wall_intercepts, tolerance=1): 
@@ -204,10 +201,11 @@ class datafiltration:
         correct_lines = []
         line_mistake_refs = []
         correct_line_refs = []
+        line_line_connections = []
 
         lines_OCO, lines_not_OCO, lines_OCO_refs, lines_not_OCO_refs, _  = maths.Chanel_check_line(wall_slopes, wall_intercepts, all_lines, all_walls, line_refs)
 
-        correct_lines.append(lines_OCO)
+        correct_lines.extend(lines_OCO)
 
         for idx, line in enumerate(lines_not_OCO):  #Each start and end ponit of the line are checked against the slope and intercepts of the checker lines 
             name = line[0]                
@@ -218,6 +216,8 @@ class datafiltration:
 
             start_matches = False 
             end_matches = False 
+            start_line_name = None 
+            end_line_name = None 
             
             # Track closest lines for start and end points
             closest_start_slope = None
@@ -237,25 +237,15 @@ class datafiltration:
             max_x = max(x for wall in all_walls for x, y in wall)
             max_y = max(y for wall in all_walls for x, y in wall)
 
-            # # Check boundaries ONCE (no loop needed)
-            # if x_start < min_x or x_start > max_x or y_start < min_y or y_start > max_y: 
-            #     start_matches = False 
-            # if x_end < min_x or x_end > max_x or y_end < min_y or y_end > max_y: 
-            #     end_matches = False 
 
             if (x_start < min_x or x_start > max_x or y_start < min_y or y_start > max_y or
                 x_end < min_x or x_end > max_x or y_end < min_y or y_end > max_y):
                 start_matches = False 
                 end_matches = False 
-                # line_mistakes.append([line])
-                # line_mistake_refs.append(lines_not_OCO_refs[idx])
-                # continue    
-
-        
-
+           
 
             for prop_line in line_properties: #These are the checker lines all lines (not on the channel outline) are checked 
-                slope, intercept, x_s, y_s, x_e, y_e = prop_line
+                line_name, slope, intercept, x_s, y_s, x_e, y_e = prop_line
                 
                 same_line_forward = (abs(x_s - x_start) < 0.01 and abs(y_s - y_start) < 0.01 and #avoid checking a line against itself 
                                     abs(x_e - x_end) < 0.01 and abs(y_e - y_end) < 0.01)
@@ -288,21 +278,25 @@ class datafiltration:
                     start_dist = maths.find_distance_to_line(x_start, y_start, slope, intercept)
                     if start_dist <= tolerance: 
                             start_matches = True
+                            start_line_name = line_name
                         
                     if start_dist < min_start_dist:
                         min_start_dist = start_dist
                         temp_start_slope = slope
                         temp_start_intercept = intercept
+                        temp_start_name_conn = line_name 
 
                 # Check end point and track closest
                 if not end_matches:      
                     end_dist = maths.find_distance_to_line(x_end, y_end, slope, intercept) 
                     if end_dist <= tolerance: 
                             end_matches = True
+                            end_line_name = line_name
                     if end_dist < min_end_dist:
                             min_end_dist = end_dist
                             temp_end_slope = slope
-                            temp_end_intercept = intercept        
+                            temp_end_intercept = intercept    
+                            temp_end_name_conn = line_name     
 
                 if start_matches and end_matches: #If a match is found break 
                     break         
@@ -311,29 +305,41 @@ class datafiltration:
             if min_start_dist <= 25:
                 closest_start_slope = temp_start_slope
                 closest_start_intercept = temp_start_intercept
+                start_line_name = temp_start_name_conn
             elif 25 < min_start_dist < 35:
                 closest_start_slope = None
                 closest_start_intercept = None
+                start_line_name = None 
             elif min_start_dist > 35: 
                 start_matches = True    
+                start_line_name = None 
 
             if min_end_dist <= 25: 
                 closest_end_slope = temp_end_slope
                 closest_end_intercept = temp_end_intercept
+                end_line_name = temp_end_name_conn
             elif 25 < min_end_dist < 35:
                 closest_end_slope = None    
                 closest_end_intercept = None
+                end_line_name = None
             elif min_end_dist > 35: 
                 end_matches = True 
+                end_line_name = None
             
             if not start_matches or not end_matches:  
                 line_mistakes.append([name, x_start, y_start, x_end, y_end, closest_start_slope, closest_start_intercept, closest_end_slope, closest_end_intercept])
                 line_mistake_refs.append(lines_not_OCO_refs[idx])
-            else: 
+                line_line_connections.append([name, start_line_name, end_line_name])
+            if start_matches and end_matches: 
                 correct_lines.append([name, x_start, y_start, x_end, y_end])   
-                correct_line_refs.append(lines_not_OCO_refs[idx])          
+                correct_line_refs.append(lines_not_OCO_refs[idx])  
+                line_line_connections.append([name, start_line_name, end_line_name])    
 
-        return line_mistakes, correct_lines, line_mistake_refs, correct_line_refs
+        # print(f'These are the line connections {correct_line_connections}')      
+        # print(f'The amount of line connections {len(correct_line_connections)}')
+        # print(f'Lines not OCO {len(lines_not_OCO)}')             
+
+        return line_mistakes, correct_lines, line_mistake_refs, correct_line_refs, line_line_connections
     
     @staticmethod
     def fix_line_mistakes(line_mistakes, line_mistake_refs): 
@@ -456,34 +462,77 @@ class datafiltration:
                 none_error.append([x_end_f, y_end_f])
 
         return line_mistake_points  
+    
+    
+    def link_line_connections(self, lines, blockrefs): 
+        """ This function checks to see if lines start and end on block references """
+        block_tolerences = self.block_tolerence(blockrefs)
+        line_block_connections = []
+        for line in lines: 
+            name, x_start, y_start, x_end, y_end = line 
+            block_name_start = None 
+            block_name_end = None  
+         
+            for block in block_tolerences: 
+                block_name, x, y, x_tolerence, y_tolerence = block 
+
+                if x_tolerence is None and y_tolerence is None: 
+                    if (abs(x_start - x) < 1 and abs(y_start - y) < 1):
+                        block_name_start = block_name 
+                    if abs(x_end - x) < 1 and abs(y_end - y) < 1: 
+                        block_name_end = block_name #
+                  
+                else: #Below are the scenarios of positions a line could be at, at the end of a block to be considered drawn to that block 
+                    if ((abs(x_start - (x + x_tolerence)) < 1 and abs(y_start - y) < 1) or  
+                        (abs(x_start - (x - x_tolerence)) < 1 and abs(y_start - y) < 1) or 
+                        (abs(x_start - x) <1 and abs(y_start - (y + y_tolerence)) < 1) or 
+                        (abs(x_start - x) < 1 and abs(y_start - (y - y_tolerence)) < 1) or
+                        (abs(x_start - x) < 1 and abs(y_start - y) < 1 )
+                        ): 
+                        block_name_start = block_name  
+                      
+                    if  ((abs(x_end - (x + x_tolerence)) < 1 and abs(y_end - y) < 1) or 
+                        (abs(x_end - (x - x_tolerence)) < 1 and abs(y_end - y) < 1) or 
+                        (abs(x_end - x) < 1 and abs(y_end - (y + y_tolerence)) < 1) or 
+                        (abs(x_end - x) < 1 and abs(y_end - (y - y_tolerence)) < 1) or 
+                        (abs(x_end - x) < 1 and abs(y_end - y) < 1) 
+                        ): 
+                        block_name_end = block_name 
+               
+            line_block_connections.append([name, block_name_start, block_name_end])   
+        # print(f'These are the line block connections {line_connections}')   
+        # print(f'There are {len(line_connections)} established')
+        return line_block_connections      
+    
+    def block_tolerence(self, blockrefs): 
+        """ The width and height of CPSHS blocks are defined in their name. This function extracts the width and height values to allow for lines to be drawn 
+        to just the edge of blocks"""
+
+        block_tolerences = [] 
+        for block in blockrefs: 
+            name, x, y, angle, name_error = block
+            x_tolerence = None 
+            y_tolerence = None 
+    
+            if name.upper().startswith("CPSHS"):
+                
+                remaining = name[5:]  # remove "CPSHS"
+                
+                remaining = remaining.split("-")[0]  # Remove anything after "-" (like -B)
+
+                parts = remaining.lower().split("x") # Split on x or X
+                
+                x_tolerence = int(parts[0])
+                y_tolerence = int(parts[1])
+
+            block_tolerences.append([name, x, y, x_tolerence, y_tolerence])
+        return block_tolerences   
 
 
-# def filter_data_base(wall_slopes, wall_intercepts, correct_blocks, final_corrected_blocks): 
-#     objects = get_catalogue()
-#     all_blocks = correct_blocks + final_corrected_blocks
-#     accepted = []
-#     rejected - []
 
-#     for block in all_blocks: 
-#         name, x, y, angle, name_error = block 
-#         for object in objects: 
-#             name, type, category, on_channel_outline = object 
+                
+            
 
-
-#             for i in range(len(wall_slopes)): 
-#                 wall_slope = wall_slopes[i]
-#                 wall_intercept = wall_intercepts[i]
-
-#                 if wall_slope is None:  # Vertical wall
-#                     x_intercept = float(wall_intercept.split()[2]) 
-#                     x_d = abs(x_intercept - x)
-#                     if x_d < 0.1 and on_channel_outline is 'Yes':
-#                         accepted.append
-                        
-#                 else:  # Wall with slope
-#                     y_d = abs(y - (wall_slope * x + wall_intercept))
-#                     if y_d < 0.1: 
-                 
 
                 
 

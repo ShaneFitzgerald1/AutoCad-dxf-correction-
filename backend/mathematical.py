@@ -36,11 +36,11 @@ class Mathematical:
         wall_intercepts = []
 
         for line in all_lines: 
-            name, x_start, y_start, x_end, y_end = line  
+            line_name, x_start, y_start, x_end, y_end = line  
             line_slopes, line_intercepts = Mathematical.calc_slope(x_start, y_start, x_end, y_end)
             slopes.append(line_slopes)
             y_intercepts.append(line_intercepts)
-            line_properties.append([line_slopes, line_intercepts, x_start, y_start, x_end, y_end])
+            line_properties.append([line_name, line_slopes, line_intercepts, x_start, y_start, x_end, y_end])
                     
         for walls in all_walls:  
             for i in range(len(walls)):  
@@ -50,7 +50,7 @@ class Mathematical:
                 slope_wall, intercept_wall = Mathematical.calc_slope(p1[0], p1[1], p2[0], p2[1])
                 wall_slopes.append(slope_wall)
                 wall_intercepts.append(intercept_wall)  
-                line_properties.append([slope_wall, intercept_wall, p1[0], p1[1], p2[0], p2[1]])      
+                line_properties.append([line_name, slope_wall, intercept_wall, p1[0], p1[1], p2[0], p2[1]])      
 
         return slopes, y_intercepts, line_properties, wall_slopes, wall_intercepts
 

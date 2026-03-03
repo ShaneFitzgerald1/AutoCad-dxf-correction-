@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from backend.mathematical import Mathematical
 from backend.guipresentation import presentation
 from backend.datafiltration import datafiltration
-from db_objects import before_after
+from db_objects import before_after, validate_categories
 
 maths = Mathematical()
 pres = presentation() 
@@ -125,28 +125,21 @@ def autocad_points(filepath):
      correct_blocks, fixed_all_blocks) = filter.On_Channel_Line(Blockref_Points, all_walls, insert_refs, line_properties, tolerance=1, tolerance_2=5)
     on_line_points, all_lines_table = pres.what_line(blocks_on_line, filtered_walls, all_lines, tolerance = 1)
     (line_mistakes, correct_lines, 
-     line_mistake_refs, correct_line_refs) = filter.find_line_error(all_lines, all_walls, line_refs, line_properties, wall_slopes, wall_intercepts, tolerance=1)
+     line_mistake_refs, correct_line_refs, line_line_connections) = filter.find_line_error(all_lines, all_walls, line_refs, line_properties, wall_slopes, wall_intercepts, tolerance=1)
     fixed_lines, fixed_lines_box, line_mistake_refs = filter.fix_line_mistakes(line_mistakes, line_mistake_refs)
     line_mistake_points = filter.find_fixed_line_points(line_mistakes, fixed_lines_box)
     duplicate_line_refs, line_duplicate_points = filter.remove_duplicate_lines(all_lines, line_refs)
 
     filtered_blockref, filtered_walls, filtered_insert_refs  = maths.Shape_outline(Blockref_Points, all_walls, insert_refs)
 
+   
+
     before_after(fixed_all_blocks, filtered_blockref, all_lines, correct_lines, fixed_lines, wall_slopes, wall_intercepts, all_walls, line_refs)
 
-    # accepted_blocks, rejected_blocks = name_match_block(filtered_blockref, all_lines, 'INSERT', wall_slopes, wall_intercepts, all_walls, line_refs)
-    # print(f'{len(accepted_blocks)} were accepted and {len(rejected_blocks)} were rejected')
-    # for block in rejected_blocks: 
-    #     name, x, y, rejection_reason = block 
-    #     print(f'Block: {(name), (x), (y)}: {rejection_reason}')
-    # accepted_lines, rejected_lines = name_match_block(filtered_blockref, all_lines, 'LINE', wall_slopes, wall_intercepts, all_walls, line_refs)     
-    # print(f'Amount of correct line {len(accepted_lines)}')
-    # print(f'Amount of rejected lines {len(rejected_lines)}')
-    # for line in rejected_lines: 
-    #     name, x_s, y_s, x_e, y_e, rejection_reason = line 
-    #     print(f'Line{name, x_s, y_s, x_e, y_e,}; {rejection_reason}')
-    
-    # scaled_blocks, mirrored_blocks = check_block_scaling(filepath)
+    line_block_connections = filter.link_line_connections(all_lines, fixed_all_blocks)
+
+    validate_categories(line_line_connections, line_block_connections)
+
     return (doc, on_line_points, all_lines_table, 
         wall_slope_intercept, filtered_walls, mistake_points, 
         final_corrected_blocks, line_mistakes, fixed_lines, final_corrected_refs, 

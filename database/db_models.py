@@ -19,6 +19,18 @@ class ObjectID(Base):
     def __repr__(self):
         return f"<ObjectID(name={self.name}, type={self.type}, on_channel_outline={self.on_channel_outline})>"
 
+class CategoryLineRule(Base): 
+    __tablename__ = 'category_line_rules'
+    id = Column(Integer, primary_key=True) 
+    category = Column(String, nullable = False)
+    allowed_connections = Column(String)
+    double_connection = Column(String, nullable = False)
+
+    def __repr__(self):
+        return f"<ObjectID(category={self.category}, allowed_connections={self.allowed_connections}, double_connections={self.double_connection})>"
+
+
 Base.metadata.create_all(engine)
+
 
 Session = sessionmaker(bind=engine)
