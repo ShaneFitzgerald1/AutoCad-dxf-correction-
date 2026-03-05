@@ -17,8 +17,10 @@ from database.db_models import Session, ObjectID, CategoryLineRule
 #     {'name': 'CPRHS140X120X12.5',  'type': 'INSERT', 'category': 'CP',     'on_channel_outline': 'Yes'},
 #     {'name': 'CPSHS150x150x8','type': 'INSERT', 'category': 'CP',     'on_channel_outline': 'Yes'},
 #     {'name': 'CPSHS150x150x8-B',  'type': 'INSERT', 'category': 'CP',     'on_channel_outline': 'Yes'},
+#     {'name': 'CPSHS150x150x8-L',  'type': 'INSERT', 'category': 'CP',     'on_channel_outline': 'Yes'},
 
 #     {'name': 'NLB 30 CENTRE',      'type': 'INSERT', 'category': 'STUD',   'on_channel_outline': 'Yes'},
+#     {'name': 'NLB 25 CENTRE',      'type': 'INSERT', 'category': 'STUD',   'on_channel_outline': 'Yes'},
 #     {'name': 'NLB 50 CENTRE',      'type': 'INSERT', 'category': 'STUD',   'on_channel_outline': 'Yes'},
 #     {'name': 'NLB 60 CENTRE',      'type': 'INSERT', 'category': 'STUD',   'on_channel_outline': 'Yes'},
 #     {'name': 'NLB CORNER 50',      'type': 'INSERT', 'category': 'STUD',   'on_channel_outline': 'Yes'},
@@ -79,7 +81,9 @@ from database.db_models import Session, ObjectID, CategoryLineRule
 #     {'name': 'TRUSS BRACING',      'type': 'LINE',   'category': 'TRUSS BRACING',  'on_channel_outline': 'No'},
 #     {'name': '325 TRUSS LINE',     'type': 'LINE',   'category': 'TRUSS LINE',  'on_channel_outline': 'No'},
 #     {'name': '225 TRUSS LINE',     'type': 'LINE',   'category': 'TRUSS LINE',  'on_channel_outline': 'No'},
-#     {'name': '60 SHS TRUSS LINE',  'type': 'LINE',   'category': 'SHS LINE',  'on_channel_outline': 'No'},
+#     {'name': '315 TRUSS LINE',     'type': 'LINE',   'category': 'TRUSS LINE',  'on_channel_outline': 'No'},
+#     {'name': '215 TRUSS LINE',     'type': 'LINE',   'category': 'TRUSS LINE',  'on_channel_outline': 'No'},
+#     {'name': '60 SHS TRUSS LINE',  'type': 'LINE',   'category': 'SHS TRUSS LINE',  'on_channel_outline': 'No'},
 
 #     {'name': '80 HEADER',          'type': 'LINE',   'category': 'HEADER', 'on_channel_outline': 'Yes'},
 #     {'name': '60 HEADER',          'type': 'LINE',   'category': 'HEADER', 'on_channel_outline': 'Yes'},
@@ -117,18 +121,15 @@ from database.db_models import Session, ObjectID, CategoryLineRule
 
 
 
-
-
 category_line_data = [
-    {'category': 'TRUSS LINE' , 'allowed_connections' : ('TRUSS LINE' , 'HEADER', 'WALL LINE', 'CILL LINE', 'BRACE LINE'), 'double_connection': 'No'}, 
-    {'category': 'TRUSS BRACING', 'allowed_connections': 'TRUSS LINE', 'double_connection': 'Yes'},
-    {'category': 'SHS TRUSS LINE', 'allowed_connections': None, 'double_connection': 'No'},
-    {'category': 'HEADER', 'allowed_connections': 'CP', 'double_connection': 'Yes'},
+    {'category': 'TRUSS LINE' , 'allowed_connections' : ('TRUSS LINE' , 'HEADER', 'WALL LINE', 'CILL LINE', 'BRACE LINE', 'SHS TRUSS LINE'), 'double_connection': 'No'}, 
+    {'category': 'TRUSS BRACING', 'allowed_connections': ('TRUSS LINE' , 'HEADER', 'WALL LINE', 'CILL LINE', 'BRACE LINE', 'SHS TRUSS LINE'), 'double_connection': 'Yes'},
+    {'category': 'SHS TRUSS LINE', 'allowed_connections': ('TRUSS LINE' , 'HEADER', 'WALL LINE', 'CILL LINE', 'BRACE LINE', 'SHS TRUSS LINE'), 'double_connection': 'No'},
+    {'category': 'HEADER', 'allowed_connections': ('CP', 'STUD'), 'double_connection': 'Yes'},
     {'category': 'CILL LINE', 'allowed_connections': 'STUD', 'double_connection': 'Yes' },
-    {'category': 'WALL LINE', 'allowed_connections': 'CP', 'double_connection': 'Yes' },
+    {'category': 'WALL LINE', 'allowed_connections': ('CP', 'STUD'), 'double_connection': 'Yes' },
     {'category': 'BRACE LINE', 'allowed_connections': ('CP', 'STUD'), 'double_connection': 'Yes'}   
 ]
-
 
 
 
@@ -166,14 +167,20 @@ def seed_category_line_rules():
 
 
 if __name__ == '__main__':
-    seed_category_line_rules()
+    # seed_database()
+    seed_category_line_rules() 
 
 
 
 #createdb -U postgres objectdatabase 
 
+#createdb -U postgres categorydatabase 
+
 
 # psql -U postgres -c "CREATE DATABASE objectdatabase;"
+
+
+# psql -U postgres -c "CREATE DATABASE categorydatabase;"
 
 # Run the code 
 
@@ -185,3 +192,5 @@ if __name__ == '__main__':
 
 
 #categorydatabase
+
+#psql -U postgres -l

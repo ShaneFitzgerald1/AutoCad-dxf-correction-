@@ -34,3 +34,7 @@ Base.metadata.create_all(engine)
 
 
 Session = sessionmaker(bind=engine)
+
+
+# if __name__ == '__main__':
+#     Base.metadata.create_all(engine)

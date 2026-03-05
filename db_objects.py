@@ -33,8 +33,8 @@ def get_category_catalogue():
     finally:
         session.close()   
 
-categories = get_category_catalogue() 
-print(f'These are the categories {categories}')
+# categories = get_category_catalogue() 
+# print(f'These are the categories {categories}')
 
        
 
@@ -128,22 +128,22 @@ def before_after(fixed_all_blocks, blockrefs, lines, correct_lines, fixed_lines,
     post_accepted_block, post_rejected_block = name_match_block(fixed_all_blocks, all_correct_lines, 'INSERT', wall_slopes, wall_intercepts, all_walls, line_refs)
     post_accepted_line, post_rejected_lines = name_match_block(fixed_all_blocks, all_correct_lines, 'LINE', wall_slopes, wall_intercepts, all_walls, line_refs)
 
-    print(f'There are initially {len(initial_accepted_blocks)} Accepted Blocks and {len(initial_rejected_blocks)} Rejected Blocks ')
+    print(f'There are initially {len(initial_accepted_blocks)} Accepted Blocks and {len(initial_rejected_blocks)} Rejected Blocks from the object DataBase  ')
     for block in initial_rejected_blocks: 
         name, x, y, rejection_reason = block 
         print(f'Block: {(name), (x), (y)}: {rejection_reason}')
 
-    print(f'There are initially {len(initial_accepted_line)} Accepted Lines and {len(initial_rejected_lines)} Rejected Lines ')
+    print(f'There are initially {len(initial_accepted_line)} Accepted Lines and {len(initial_rejected_lines)} Rejected Lines from the object DataBase')
     for line in initial_rejected_lines: 
         name, xs, ys, xe, ye, rejection_reason = line 
         print(f'Line: {(name), (xs), (ys), (xe), (ye)}: {rejection_reason}')
 
-    print(f'Post correction there are {len(post_accepted_block)} Accepted Blocks and {len(post_rejected_block)} Rejected Blocks ')    
+    print(f'Post correction there are {len(post_accepted_block)} Accepted Blocks and {len(post_rejected_block)} Rejected Blocks from the obejct Database ')    
     for block in post_rejected_block: 
         name, x, y, rejection_reason = block 
         print(f'Block: {(name), (x), (y)}: {rejection_reason}')
 
-    print(f'Post correction there are {len(post_accepted_line)} Accepted Lines and {len(post_rejected_lines)} Rejected Lines ')
+    print(f'Post correction there are {len(post_accepted_line)} Accepted Lines and {len(post_rejected_lines)} Rejected Lines from the object Database')
     for line in post_rejected_lines: 
         name, xs, ys, xe, ye, rejection_reason = line 
         print(f'Line: {(name), (xs), (ys), (xe), (ye)}: {rejection_reason}')    
@@ -167,22 +167,32 @@ def categories_sorter(line_connections):
     
 def get_category(line_name): 
     objects = get_catalogue()
+    if line_name is None: 
+        return None 
     for object in objects: 
         object_name, type, category, on_channel_outline = object 
-        if line_name == object_name: 
+        if line_name.upper() == object_name.upper(): 
             return category 
     return None 
 
 
 def validate_categories(line_line_connections, line_block_connections):
     categories = get_category_catalogue() 
+    # print(f'These are the categories {categories}')
+
     ll_connections = categories_sorter(line_line_connections)
     lb_connections = categories_sorter(line_block_connections)
+    # print(f'Line line before filter {line_line_connections}')
+    # print(f'Line line post filter {ll_connections }')
+
+    # print(f'These are line block before filter {line_block_connections}')
+    # print(f'These are the line block after filtering {lb_connections}')
     all_connections = ll_connections + lb_connections
     correct_connections = []
     mand_fail = []
     quantity_fail = []
     both_fail = []
+    # print(f'These are all line connections {all_connections}')
 
     for line in all_connections: 
         line_name, line_category, line_start_category, line_end_category = line 
@@ -200,79 +210,46 @@ def validate_categories(line_line_connections, line_block_connections):
             if cat == line_category: 
                 if line_start_category in allowed_list and line_end_category in allowed_list:  
                     safe_connections = True 
+                
+                if line_category == 'TRUSS LINE': 
+                    if line_start_category is None or line_end_category is None: 
+                        safe_connections = True  
+                    if line_start_category == 'TRUSS BRACING' or line_end_category == 'TRUSS BRACING': 
+                        safe_connections = True 
+                    if line_start_category == 'TRUSS BRACING' and line_end_category == 'TRUSS BRACING': 
+                        safe_connections = False   
+
+                if line_category == 'SHS TRUSS LINE': 
+                    if line_start_category is None or line_end_category is None: 
+                        safe_connections = True          
 
                 if double_connection == 'Yes': 
+                    if line_category == 'TRUSS LINE' or line_category == 'SHS TRUSS LINE': 
+                        continue 
                     if line_start_category is None or line_end_category is None: 
                         untrue_quantity_connections = True 
-                if double_connection == 'No': 
-                    if line_start_category is not None and line_end_category is not None: 
-                        untrue_quantity_connections = True    
+       
 
         if safe_connections and not untrue_quantity_connections: 
             correct_connections.append([line_name])  
         if not safe_connections and not untrue_quantity_connections: 
-            mand_fail.append([line_name])
+            mand_fail.append([line_name, line_category, line_start_category, line_end_category])
         if safe_connections and untrue_quantity_connections: 
             quantity_fail.append([line_name])
         if not safe_connections and untrue_quantity_connections: 
-            both_fail.append([line_name])
+            both_fail.append([line_name, line_category, line_start_category, line_end_category])
 
-    print(f'{len(correct_connections)} were approved by the DataBase')
-    print(f'{len(mand_fail)} were disapproved due to lines ending on incorrect lines/objects')
-    print(f'{len(quantity_fail)} were disapproved due to lines not ending on lines/objects')
-    print(f'{len(both_fail)} were disapproved due to lines not ending on lines/objects and ending on incorrect object')
+
+    print(f'{len(correct_connections)} Lines were approved by the Category DataBase')
+    print(f'{len(mand_fail)} Lines were disapproved due to lines ending on incorrect lines/objects')
+    print(f'These are the mand fail lines {mand_fail}')
+    print(f'{len(quantity_fail)} Lines were disapproved due to lines not ending on lines/objects')
+    print(f'{len(both_fail)} Lines were disapproved due to lines not ending on lines/objects and ending on incorrect object')
+    print(f'Both failed lines is {both_fail}')
+
     
-    
 
 
-
-
-
-
-                
-                
-
-
-
-
-
-def validate_category_database(line_line_connections, line_block_connections): 
-    category_list_line = []
-    category_list_block = []
-    objects = get_catalogue()
-    categories = get_category_catalogue() 
-
-    for line in line_line_connections: 
-        line_name, line_start_name, line_end_name = line 
-
-        for object in objects: 
-            name, type, category, on_channel_outline = object 
-            if line_name == name: 
-                category_list_line.append([line_name, line_start_name, line_end_name, category, on_channel_outline])
-
-    for line in line_block_connections: 
-        line_name, block_name_start, block_name_end = line 
-
-        for object in objects: 
-            name, type, category, on_channel_outline = object 
-            if line_name == name: 
-                category_list_block.append([line_name, block_name_start, block_name_end, category, on_channel_outline])       
-
-    for line in category_list_line: 
-        line_name, line_start_name, line_end_name, category, on_channel_outline = line 
-
-
-        for categor in categories: 
-            cat, allowed_connections, double_connection = categor
-
-            if allowed_connections:
-                allowed_list = [a.strip() for a in allowed_connections.split(',')]
-            else:
-                allowed_list = [] 
-
-            if cat == category:  # ✅ now outside the else
-                if line_start_name in allowed_list and line_end_name in allowed_list:  
-                    print(f'{line_name} was verified')
 
 
 
@@ -294,7 +271,13 @@ def validate_category_database(line_line_connections, line_block_connections):
 #     session.commit()
 #     session.close() 
 
-# add_new_object('305 TRUSS LINE', 'LINE', 'TRUSS', 'No' )               
+# add_new_object('60 SHS TRUSS LINE', 'LINE', 'SHS TRUSS LINE', 'No')
+
+# add_new_object('215 TRUSS LINE', 'LINE', 'TRUSS LINE', 'No')
+
+
+# add_new_object('CPSHS150x150x8-L', 'INSERT', 'CP', 'Yes' )   
+         
 
     
 # def remove_object(name):
@@ -308,100 +291,44 @@ def validate_category_database(line_line_connections, line_block_connections):
 #         print(f"Not found: {name}")
 #     session.close()
 
-# remove_object('305 TRUSS LINE')
+# remove_object('60 SHS TRUSS LINE')    
+
+# remove_object('215 TRUSS LINE')
+# remove_object('205 TRUSS LINE')
             
 
 
 
 
-# def add_new_object(name, obj_type, category=None, on_channel_outline='Yes'):
-#     """
-#     Adds a new object to the database when a user accepts an unknown object via the GUI.
 
-#     Args:
-#         name (str):                 The block or layer name (e.g. 'NEW_BLOCK_TYPE')
-#         obj_type (str):             'INSERT' or 'LINE'
-#         category (str, optional):  Category grouping (e.g. 'CP', 'STUD'). None if unknown.
-#         on_channel_outline (str):   'Yes' or 'No'
 
-#     Returns:
-#         True if successful, False if it failed (e.g. duplicate or DB error)
-#     """
-#     session = Session()
-#     try:
-#         # Guard against adding duplicates
-#         existing = session.query(ObjectID).filter_by(name=name).first()
-#         if existing:
-#             print(f"Object '{name}' already exists in the database. Skipping.")
-#             return False
 
-#         new_obj = ObjectID(
-#             name=name,
-#             type=obj_type,
+
+
+
+
+# def add_new_object(category, allowed_connections, double_connection):
+#     session = Session() 
+#     new_obj = CategoryLineRule(
 #             category=category,
-#             on_channel_outline=on_channel_outline
-#         )
-#         session.add(new_obj)
-#         session.commit()
-#         print(f"New object '{name}' added to database successfully.")
-#         return True
-#     except Exception as e:
-#         session.rollback()
-#         print(f"Failed to add object '{name}' to database: {e}")
-#         return False
-#     finally:
-#         session.close()
+#             allowed_connections=str(allowed_connections),
+#             double_connection=double_connection) 
+#     session.add(new_obj)
+#     session.commit()
+#     session.close()
 
+# add_new_object('TRUSS BRACING', ('TRUSS LINE' , 'HEADER', 'WALL LINE', 'CILL LINE', 'BRACE LINE') , 'Yes' )  
 
-# def object_exists(name):
-#     """
-#     Quick check for whether a single name exists in the database.
-#     Useful if you only need a yes/no without loading the whole catalogue.
-
-#     Args:
-#         name (str): The object name to check.
-
-#     Returns:
-#         True if found, False if not found or on DB error.
-#     """
+    
+# def remove_object(name):
 #     session = Session()
-#     try:
-#         result = session.query(ObjectID).filter_by(name=name).first()
-#         return result is not None
-#     except Exception as e:
-#         print(f"Warning: Database check failed for '{name}': {e}")
-#         return False
-#     finally:
-#         session.close()
+#     obj = session.query(CategoryLineRule).filter_by(category = name).first()
+#     if obj:
+#         session.delete(obj)
+#         session.commit()
+#         print(f"Removed: {name}")
+#     else:
+#         print(f"Not found: {name}")
+#     session.close()
 
-
-# def validate_object(name, obj_type, catalogue):
-#     """
-#     Validates a single object name against the already-loaded catalogue dictionary.
-#     Use this during DXF extraction rather than hitting the database per object.
-
-#     Args:
-#         name (str):         The object name to validate (block name or line layer name)
-#         obj_type (str):     'INSERT' or 'LINE' - used to confirm it matches the expected type
-#         catalogue (dict):   The dictionary returned by get_catalogue()
-
-#     Returns a dict with:
-#         {
-#             'known':                True/False   - whether it exists in the database at all
-#             'type_match':           True/False   - whether its DB type matches obj_type
-#             'expected_on_outline':  'Yes'/'No'/None  - what the DB says about channel outline
-#         }
-#     """
-#     if name not in catalogue:
-#         return {
-#             'known': False,
-#             'type_match': False,
-#             'expected_on_outline': None
-#         }
-
-#     db_entry = catalogue[name]
-#     return {
-#         'known': True,
-#         'type_match': db_entry['type'] == obj_type,
-#         'expected_on_outline': db_entry['on_channel_outline']
-#     }
+# remove_object('TRUSS BRACING')

@@ -108,14 +108,14 @@ def autocad_points(filepath):
         layers.append([layer])
         all_lines.append([layer, start_x, start_y, end_x, end_y])     
 
+
     
     # Extract POLYLINE data 
     for polyline in msp.query('LWPOLYLINE[layer=="CHANNEL OUTLINE"]'):
         points = extract_polyline_points(polyline)
         all_walls.append(points)
 
-    # print(f'{len(acc_blocks)} were accepted and {len(rej_blocks)} were rejected based on name properties') 
-    # print(f'These are rej blocks {rej_blocks}')   
+       
 
     wall_lengths = maths.wall_len(all_lines)  
     slopes, y_intercepts, line_properties, wall_slopes, wall_intercepts = maths.slope_values(all_lines, all_walls) 

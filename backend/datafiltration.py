@@ -202,10 +202,13 @@ class datafiltration:
         line_mistake_refs = []
         correct_line_refs = []
         line_line_connections = []
+        line_mistakes_check = []
 
         lines_OCO, lines_not_OCO, lines_OCO_refs, lines_not_OCO_refs, _  = maths.Chanel_check_line(wall_slopes, wall_intercepts, all_lines, all_walls, line_refs)
 
         correct_lines.extend(lines_OCO)
+
+        print(f'These are the lines not OCO {lines_not_OCO}')
 
         for idx, line in enumerate(lines_not_OCO):  #Each start and end ponit of the line are checked against the slope and intercepts of the checker lines 
             name = line[0]                
@@ -252,23 +255,33 @@ class datafiltration:
                 same_line_reverse = (abs(x_s - x_end) < 0.01 and abs(y_s - y_end) < 0.01 and 
                                     abs(x_e - x_start) < 0.01 and abs(y_e - y_start) < 0.01)
                 
-                avoid_same_formula_error = (abs(x_start - x_s) < 0.1 and abs(x_end - x_e) < 0.1  #if two vertical lines are on the same path 
-                                            and abs(y_start - y_s) > 10 and abs(y_end - y_e) > 10) #skip this line if its two far away 
-                avoid_reverse_formula_error = (abs(x_start - x_e) < 0.1 and abs(x_end - x_s) < 0.1 
-                                            and abs(y_start - y_e) > 10 and abs(y_end - y_s) > 10)
+                avoid_same_formula_error_consx_x = ((abs(x_start - x_s) < 6 or abs(x_start - x_e) < 6 or 
+                    abs(x_end - x_s) < 6 or abs(x_end - x_e) < 6)) 
+                avoid_same_formula_error_consx_y = (y_s <= y_start <= y_e or y_e <= y_start <= y_s or 
+                                        y_s <= y_end <= y_e or y_e <= y_end <= y_s) 
+                
+                avoid_same_fomrula_error_consy_y = ( (abs(y_start - y_s) < 6 or abs(y_start - y_e) < 6 or 
+                                                      abs(y_end - y_s) < 6 or abs(y_end - y_e) < 6))
+                avoid_same_formula_error_consy_x = (x_s <= x_start <= x_e or x_e <= x_start <= x_s or 
+                                        x_s <= x_end <= x_e or x_e <= x_end <= x_s) 
+                
+                
+                avoid_same_formula_consx_error = avoid_same_formula_error_consx_x and not avoid_same_formula_error_consx_y
+                avoid_same_formula_consy_error = avoid_same_fomrula_error_consy_y and not avoid_same_formula_error_consy_x
+            
                 
                 #Lines are being checked against the equation of lines of other lines, an equation of a line assumes a lines length is infinite throuhgh space
                 #the below code stops checking lines that are far from the line being checked to be corrected onto that line 
                 avoid_distance_lines = (x_s <= x_start <= x_e or x_e <= x_start <= x_s or x_s <= x_end <= x_e  #if hte line is out of range of hte checking line
                                     or x_e <= x_end <= x_s  or y_s <= y_start <= y_e or y_e <= y_start <= y_s
                                     or y_s <= y_end <= y_e or y_e <= y_end <= y_s)
-                
+          
                 min_distance = min(abs(x_start - x_s), abs(x_start - x_e),   #find miniumum distance to the line if not within the range
                     abs(x_end - x_s), abs(x_end - x_e),    
                     abs(y_start - y_s), abs(y_start - y_e), 
                     abs(y_end - y_s), abs(y_end - y_e))
                 
-                if same_line_forward or same_line_reverse or avoid_reverse_formula_error or avoid_same_formula_error:
+                if same_line_forward or same_line_reverse or avoid_same_formula_consx_error or avoid_same_formula_consy_error:
                     continue 
                 if not avoid_distance_lines and (min_distance > 5):  #if the line is not within the range of the line then check if it is within a tolerence, than skip that line
                     continue 
@@ -328,18 +341,20 @@ class datafiltration:
             
             if not start_matches or not end_matches:  
                 line_mistakes.append([name, x_start, y_start, x_end, y_end, closest_start_slope, closest_start_intercept, closest_end_slope, closest_end_intercept])
+                line_mistakes_check.append([name, x_start, y_start, x_end, y_end, start_line_name, end_line_name])
                 line_mistake_refs.append(lines_not_OCO_refs[idx])
                 line_line_connections.append([name, start_line_name, end_line_name])
             if start_matches and end_matches: 
-                correct_lines.append([name, x_start, y_start, x_end, y_end])   
+                correct_lines.append([name, x_start, y_start, x_end, y_end]) 
+                line_mistakes_check.append([name, x_start, y_start, x_end, y_end, start_line_name, end_line_name])  
                 correct_line_refs.append(lines_not_OCO_refs[idx])  
-                line_line_connections.append([name, start_line_name, end_line_name])    
+                line_line_connections.append([name, start_line_name, end_line_name])   
 
-        # print(f'These are the line connections {correct_line_connections}')      
-        # print(f'The amount of line connections {len(correct_line_connections)}')
-        # print(f'Lines not OCO {len(lines_not_OCO)}')             
+        print(f'The correct lines {correct_lines}')
+        print(f'The line mistakes {line_mistakes}')         
 
         return line_mistakes, correct_lines, line_mistake_refs, correct_line_refs, line_line_connections
+    
     
     @staticmethod
     def fix_line_mistakes(line_mistakes, line_mistake_refs): 
@@ -467,7 +482,7 @@ class datafiltration:
     def link_line_connections(self, lines, blockrefs): 
         """ This function checks to see if lines start and end on block references """
         block_tolerences = self.block_tolerence(blockrefs)
-        line_block_connections = []
+        line_block_connections = [] 
         for line in lines: 
             name, x_start, y_start, x_end, y_end = line 
             block_name_start = None 
@@ -481,6 +496,7 @@ class datafiltration:
                         block_name_start = block_name 
                     if abs(x_end - x) < 1 and abs(y_end - y) < 1: 
                         block_name_end = block_name #
+                    
                   
                 else: #Below are the scenarios of positions a line could be at, at the end of a block to be considered drawn to that block 
                     if ((abs(x_start - (x + x_tolerence)) < 1 and abs(y_start - y) < 1) or  
@@ -489,8 +505,8 @@ class datafiltration:
                         (abs(x_start - x) < 1 and abs(y_start - (y - y_tolerence)) < 1) or
                         (abs(x_start - x) < 1 and abs(y_start - y) < 1 )
                         ): 
-                        block_name_start = block_name  
-                      
+                        block_name_start = block_name 
+                     
                     if  ((abs(x_end - (x + x_tolerence)) < 1 and abs(y_end - y) < 1) or 
                         (abs(x_end - (x - x_tolerence)) < 1 and abs(y_end - y) < 1) or 
                         (abs(x_end - x) < 1 and abs(y_end - (y + y_tolerence)) < 1) or 
@@ -498,12 +514,26 @@ class datafiltration:
                         (abs(x_end - x) < 1 and abs(y_end - y) < 1) 
                         ): 
                         block_name_end = block_name 
+                    
                
-            line_block_connections.append([name, block_name_start, block_name_end])   
-        # print(f'These are the line block connections {line_connections}')   
-        # print(f'There are {len(line_connections)} established')
-        return line_block_connections      
+            line_block_connections.append([name, block_name_start, block_name_end]) 
+        filtered_line_conns = self.filter_line_block_connections(line_block_connections) 
+
+        return filtered_line_conns     
     
+    def filter_line_block_connections(self, line_block_connections): 
+        filtered_line_conn = []
+        for line in line_block_connections: 
+            name, block_name_start, block_name_end = line 
+            if (block_name_start is None or block_name_start == 'TRUSS VERTICAL') and (block_name_end is None or block_name_end == 'TRUSS VERTICAL'): 
+                continue 
+
+            filtered_line_conn.append([name, block_name_start, block_name_end])
+
+        return filtered_line_conn    
+ 
+
+
     def block_tolerence(self, blockrefs): 
         """ The width and height of CPSHS blocks are defined in their name. This function extracts the width and height values to allow for lines to be drawn 
         to just the edge of blocks"""
@@ -524,6 +554,12 @@ class datafiltration:
                 
                 x_tolerence = int(parts[0])
                 y_tolerence = int(parts[1])
+
+            if name.upper().startswith("NLB"): 
+                parts = name.split()        # ['NLB', '30', 'CENTRE']
+                value = int(parts[1]) / 2   # 15 (half-width for tolerance)
+                x_tolerence = value
+                y_tolerence = value
 
             block_tolerences.append([name, x, y, x_tolerence, y_tolerence])
         return block_tolerences   

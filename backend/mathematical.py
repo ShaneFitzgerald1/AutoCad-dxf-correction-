@@ -161,8 +161,8 @@ class Mathematical:
             max_y = max(y for wall in all_walls for x, y in wall)
 
             # Check boundaries ONCE (no loop needed)
-            if (x_start < (min_x - 0.1) or x_start > (max_x + 0.1) or y_start < (min_y- 0.1) or y_start > (max_y + 0.1) or
-                x_end < (min_x - 0.1) or x_end > (max_x + 0.1) or y_end < (min_y - 0.1) or y_end > (max_y + 0.1)):
+            if (x_start < (min_x - 0.2) or x_start > (max_x + 0.2) or y_start < (min_y- 0.2) or y_start > (max_y + 0.2) or
+                x_end < (min_x - 0.2) or x_end > (max_x + 0.2) or y_end < (min_y - 0.2) or y_end > (max_y + 0.2)):
                 lines_not_OCO.append([name, x_start, y_start, x_end, y_end])
                 lines_not_OCO_refs.append(line_refs[idx])
                 lines_cl.append([name, x_start, y_start, x_end, y_end, 'No'])
@@ -179,14 +179,14 @@ class Mathematical:
                     x_intercept = float(wall_intercept.split()[2]) 
                     x_sd = abs(x_intercept - x_start)
                     x_ed = abs(x_intercept - x_end)
-                    if x_ed < 0.1 and x_sd < 0.1:
+                    if x_ed < 0.2 and x_sd < 0.2:
                         on_channel_outline = True 
                         break
                       
                 else:  # Wall with slope
                     y_ss = abs(y_start - (wall_slope * x_start + wall_intercept))
                     y_ee = abs(y_end - (wall_slope * x_end + wall_intercept))
-                    if y_ss < 0.1 and y_ee < 0.1: 
+                    if y_ss < 0.2 and y_ee < 0.2: 
                         on_channel_outline = True 
                         break
 
@@ -197,7 +197,9 @@ class Mathematical:
             else: 
                 lines_not_OCO.append([name, x_start, y_start, x_end, y_end]) 
                 lines_not_OCO_refs.append(line_refs[idx])   
-                lines_cl.append([name, x_start, y_start, x_end, y_end, 'No'])
+                lines_cl.append([name, x_start, y_start, x_end, y_end, 'No'])     
 
+        # print(f'These are lines not OCO {lines_not_OCO}')        
+                
         return lines_OCO, lines_not_OCO, lines_OCO_refs, lines_not_OCO_refs, lines_cl                  
             
