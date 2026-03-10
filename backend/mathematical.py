@@ -105,6 +105,7 @@ class Mathematical:
         if slope is None:
             x_intercept = float(intercept.split()[2])
             return abs(x_point - x_intercept)
+
         else:
             return abs(y_point - (slope * x_point + intercept))
 
@@ -114,6 +115,8 @@ class Mathematical:
         eq1 = Eq(y, closest_slope * x + closest_intercept)
         eq2 = Eq(y, slope_line * x + intercept_line)
         solution = solve((eq1, eq2), (x, y))
+        if not solution or x not in solution or y not in solution:
+            return None, None
         return float(solution[x]), float(solution[y])
     
     @staticmethod
@@ -203,3 +206,37 @@ class Mathematical:
                 
         return lines_OCO, lines_not_OCO, lines_OCO_refs, lines_not_OCO_refs, lines_cl                  
             
+    @staticmethod
+    def return_error(final_corrected_blocks, mistake_points):
+        """ This function ensures that blocks that have not been fixed are returned as an error
+        this situation arises when blocks are too far away from anything they are not fixed """
+
+        finals_corrected_blocks = []
+
+        for block in final_corrected_blocks: 
+            name, x, y, angle, name_error = block 
+
+            if len(mistake_points) == 0:
+                finals_corrected_blocks.append([name, x, y, angle, name_error])
+                continue
+
+            matched = False
+            for mistake_block in mistake_points: 
+                name_m, x_m, y_m, angle_m, name_error_m = mistake_block
+
+                if name_m == name: 
+                    matched = True
+                    if abs(x_m - x) < 0.01 and abs(y_m - y) < 0.01: 
+                        finals_corrected_blocks.append([name, None, None, None, None])
+                    else: 
+                        finals_corrected_blocks.append([name, x, y, angle, name_error])
+                    break 
+
+            if not matched:
+                finals_corrected_blocks.append([name, x, y, angle, name_error])
+
+        return finals_corrected_blocks               
+
+            
+
+

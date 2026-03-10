@@ -17,17 +17,22 @@ class datafiltration:
 
     @staticmethod
     def remove_duplicate_lines(all_lines, line_refs):
-        #Function removes any duplicate lines ensuring there are no line repeats
         seen = []
         duplicate_refs = []
         line_duplicates_points = []
         
         for idx, line in enumerate(all_lines):
-            _, x_start, y_start, x_end, y_end = line
-            if line in seen:
+            name, x_start, y_start, x_end, y_end = line
+            
+            # Normalise direction so A->B and B->A are treated as the same line
+            coords = tuple(sorted([(x_start, y_start), (x_end, y_end)]))
+            key = (name, coords)
+            
+            if key in seen:
                 duplicate_refs.append(line_refs[idx])
                 line_duplicates_points.append([x_start, y_start, x_end, y_end])
-            seen.append(line)
+            else:
+                seen.append(key)
 
         return duplicate_refs, line_duplicates_points
     
@@ -39,6 +44,7 @@ class datafiltration:
            Function inputs: Filepath, Tolerence1 (if something is within this its not a mistake), Tolerence2 if it falls within this and outside T1 its a mistake """
 
         filtered_blockref, filtered_walls, filtered_insert_refs = maths.Shape_outline(Blockref_Points, all_walls, insert_refs)
+
 
         blocks_on_line= []
         mistake_points = []
@@ -162,31 +168,40 @@ class datafiltration:
             
             if not found_match: #No matches found at all within either tolerence return an error
                 blocks_on_line.append([name, x, y, angle, None, None, 'Not On Line', 'Error']) 
+                x_fixed = None 
+                y_fixed = None 
+                mistake_points.append([name, x, y, x_fixed, y_fixed])
+                corrected_blocks.append([name, x, y, angle, name_error])
+                corrected_block_refs.append(filtered_insert_refs[idx])
 
-        final_correct_blocks, final_corrected_blocks, final_corrected_refs = datafiltration.filter_name_errors(correct_blocks, correct_block_refs, corrected_blocks, corrected_block_refs)  
+        final_correct_blocks, final_corrected_blocks, final_corrected_refs, final_mistake_blocks = datafiltration.filter_name_errors(correct_blocks, correct_block_refs, corrected_blocks, corrected_block_refs, mistake_points)  
 
         all_blocks_correct_test = final_correct_blocks + final_corrected_blocks
         
-        return blocks_on_line, mistake_points, final_corrected_blocks, final_corrected_refs, filtered_walls, correct_blocks, all_blocks_correct_test
+        return blocks_on_line, final_mistake_blocks, final_corrected_blocks, final_corrected_refs, filtered_walls, correct_blocks, all_blocks_correct_test
     
     @staticmethod
-    def filter_name_errors(correct_blocks, correct_block_refs, corrected_blocks, corrected_block_refs):
+    def filter_name_errors(correct_blocks, correct_block_refs, corrected_blocks, corrected_block_refs, mistake_points):
         """Function that filters through all blocks to see if there is a name error and returns it as a mistake""" 
         final_correct_blocks = []
         final_correct_refs = []
+        mistake_blocks_name = []
+        
         final_corrected_blocks = list(corrected_blocks)
         final_corrected_refs = list(corrected_block_refs)
 
         for idx, block in enumerate(correct_blocks):
             name, x, y, angle, name_error = block
-            if name_error:
+            if name_error is not None:
                 final_corrected_blocks.append(block)
                 final_corrected_refs.append(correct_block_refs[idx])
+                mistake_blocks_name.append([name_error, x, y, angle, name_error])
             else:
                 final_correct_blocks.append(block)
-                final_correct_refs.append(correct_block_refs[idx])
-
-        return final_correct_blocks, final_corrected_blocks, final_corrected_refs
+                final_correct_refs.append(correct_block_refs[idx])  
+            
+        final_mistake_blocks = mistake_blocks_name + mistake_points
+        return final_correct_blocks, final_corrected_blocks, final_corrected_refs, final_mistake_blocks
     
     @staticmethod 
     def find_line_error(all_lines, all_walls, line_refs, line_properties, wall_slopes, wall_intercepts, tolerance=1): 
@@ -202,13 +217,13 @@ class datafiltration:
         line_mistake_refs = []
         correct_line_refs = []
         line_line_connections = []
+        line_line_connections_check = []
         line_mistakes_check = []
+        situation_where = []
 
         lines_OCO, lines_not_OCO, lines_OCO_refs, lines_not_OCO_refs, _  = maths.Chanel_check_line(wall_slopes, wall_intercepts, all_lines, all_walls, line_refs)
 
         correct_lines.extend(lines_OCO)
-
-        print(f'These are the lines not OCO {lines_not_OCO}')
 
         for idx, line in enumerate(lines_not_OCO):  #Each start and end ponit of the line are checked against the slope and intercepts of the checker lines 
             name = line[0]                
@@ -235,14 +250,15 @@ class datafiltration:
             temp_end_slope = None
             temp_end_intercept = None
 
+
             min_x = min(x for wall in all_walls for x, y in wall) #finding the boundaries of the shape 
             min_y = min(y for wall in all_walls for x,y in wall)
             max_x = max(x for wall in all_walls for x, y in wall)
             max_y = max(y for wall in all_walls for x, y in wall)
+          
 
-
-            if (x_start < min_x or x_start > max_x or y_start < min_y or y_start > max_y or
-                x_end < min_x or x_end > max_x or y_end < min_y or y_end > max_y):
+            if (x_start < (min_x - 0.2) or x_start > (max_x + 0.2) or y_start < (min_y- 0.2) or y_start > (max_y + 0.2) or
+                x_end < (min_x - 0.2) or x_end > (max_x + 0.2) or y_end < (min_y - 0.2) or y_end > (max_y + 0.2)):
                 start_matches = False 
                 end_matches = False 
            
@@ -255,64 +271,90 @@ class datafiltration:
                 same_line_reverse = (abs(x_s - x_end) < 0.01 and abs(y_s - y_end) < 0.01 and 
                                     abs(x_e - x_start) < 0.01 and abs(y_e - y_start) < 0.01)
                 
-                avoid_same_formula_error_consx_x = ((abs(x_start - x_s) < 6 or abs(x_start - x_e) < 6 or 
-                    abs(x_end - x_s) < 6 or abs(x_end - x_e) < 6)) 
-                avoid_same_formula_error_consx_y = (y_s <= y_start <= y_e or y_e <= y_start <= y_s or 
-                                        y_s <= y_end <= y_e or y_e <= y_end <= y_s) 
+                tol = 1
+                tol_match = 2
+
+                avoid_same_formula_error_consx_x = (abs(x_s - x_start) < tol_match and abs(x_e - x_end) < tol_match
+                                                    and abs(x_e - x_start) < tol_match and abs(x_s - x_end) < tol_match)
+                avoid_same_formula_error_consx_y_start = ((y_s - tol) <= y_start <= (y_e + tol)) or ((y_e - tol) <= y_start <= (y_s + tol))                          
+                avoid_same_formula_error_consx_y_end = ((y_s - tol) <= y_end <= (y_e + tol)) or ((y_e - tol) <= y_end <= (y_s + tol))  
+
+
+                avoid_same_formula_error_consy_y = (abs(y_s - y_start) < tol_match and abs(y_e - y_end) < tol_match
+                                                    and abs(y_e - y_start) < tol_match and abs(y_s - y_end) < tol_match )
+                avoid_same_formula_error_consy_x_start = ((x_s - tol) <= x_start <= (x_e + tol)) or ((x_e - tol) <= x_start <= (x_s + tol)) 
+                avoid_same_formula_error_consy_x_end = ((x_s - tol) <= x_end <= (x_e + tol)) or ((x_e - tol) <= x_end <= (x_s + tol))
                 
-                avoid_same_fomrula_error_consy_y = ( (abs(y_start - y_s) < 6 or abs(y_start - y_e) < 6 or 
-                                                      abs(y_end - y_s) < 6 or abs(y_end - y_e) < 6))
-                avoid_same_formula_error_consy_x = (x_s <= x_start <= x_e or x_e <= x_start <= x_s or 
-                                        x_s <= x_end <= x_e or x_e <= x_end <= x_s) 
+                avoid_same_formula_error_consx_start = avoid_same_formula_error_consx_x and not avoid_same_formula_error_consx_y_start 
+                avoid_same_formula_error_consx_end = avoid_same_formula_error_consx_x and not avoid_same_formula_error_consx_y_end
                 
-                
-                avoid_same_formula_consx_error = avoid_same_formula_error_consx_x and not avoid_same_formula_error_consx_y
-                avoid_same_formula_consy_error = avoid_same_fomrula_error_consy_y and not avoid_same_formula_error_consy_x
+                avoid_same_formula_error_consy_start = avoid_same_formula_error_consy_y and not avoid_same_formula_error_consy_x_start 
+                avoid_same_formula_error_consy_end = avoid_same_formula_error_consy_y and not avoid_same_formula_error_consy_x_end 
             
-                
+                tol_2 = 25
                 #Lines are being checked against the equation of lines of other lines, an equation of a line assumes a lines length is infinite throuhgh space
                 #the below code stops checking lines that are far from the line being checked to be corrected onto that line 
-                avoid_distance_lines = (x_s <= x_start <= x_e or x_e <= x_start <= x_s or x_s <= x_end <= x_e  #if hte line is out of range of hte checking line
-                                    or x_e <= x_end <= x_s  or y_s <= y_start <= y_e or y_e <= y_start <= y_s
-                                    or y_s <= y_end <= y_e or y_e <= y_end <= y_s)
+                avoid_distance_lines_x = ((x_s - tol_2) <= x_start <= (x_e + tol_2) or (x_e - tol_2) <= x_start <= (x_s + tol_2) or 
+                                          (x_s - tol_2) <= x_end <= (x_e + tol_2)  or (x_e - tol_2) <= x_end <= (x_s + tol_2))
+                
+
+                avoid_distance_lines_y = ((y_s - tol_2) <= y_start <= (y_e + tol_2) or (y_e - tol_2) <= y_start <= (y_s + tol_2)
+                                    or (y_s - tol_2) <= y_end <= (y_e + tol_2) or (y_e - tol_2) <= y_end <= (y_s + tol_2))
+                
+                # avoid_distance_lines_start = (x_s <= x_start <= x_e or x_e <= x_start <= x_s or y_s <= y_start <= y_e or y_e <= y_start <= y_s)
+                # avoid_distance_lines_end = (x_s <= x_end <= x_e or x_e <= x_end <= x_s or y_s <= y_end <= y_e or y_e <= y_end <= y_s)
           
                 min_distance = min(abs(x_start - x_s), abs(x_start - x_e),   #find miniumum distance to the line if not within the range
                     abs(x_end - x_s), abs(x_end - x_e),    
                     abs(y_start - y_s), abs(y_start - y_e), 
                     abs(y_end - y_s), abs(y_end - y_e))
                 
-                if same_line_forward or same_line_reverse or avoid_same_formula_consx_error or avoid_same_formula_consy_error:
+                if (same_line_forward or same_line_reverse):
                     continue 
-                if not avoid_distance_lines and (min_distance > 5):  #if the line is not within the range of the line then check if it is within a tolerence, than skip that line
+                if not avoid_distance_lines_x or not avoid_distance_lines_y:  #if the line is not within the range of the line then check if it is within a tolerence, than skip that line
                     continue 
 
                 # Check start point and track closest - ONLY STORE TEMP VALUES
                 if not start_matches:
-                    start_dist = maths.find_distance_to_line(x_start, y_start, slope, intercept)
-                    if start_dist <= tolerance: 
+                    if not (avoid_same_formula_error_consx_start or avoid_same_formula_error_consy_start): 
+                        start_dist = maths.find_distance_to_line(x_start, y_start, slope, intercept)
+                        if start_dist <= tolerance: 
+
                             start_matches = True
                             start_line_name = line_name
-                        
-                    if start_dist < min_start_dist:
-                        min_start_dist = start_dist
-                        temp_start_slope = slope
-                        temp_start_intercept = intercept
-                        temp_start_name_conn = line_name 
+                            x_s_checker_start = x_s
+                            y_s_checker_start = y_s
+                            x_e_checker_start = x_e
+                            y_e_checker_start = y_e
+                            
+                        if start_dist < min_start_dist:
+                            min_start_dist = start_dist
+                            temp_start_slope = slope
+                            temp_start_intercept = intercept
+                            temp_start_name_conn = line_name 
+
 
                 # Check end point and track closest
-                if not end_matches:      
-                    end_dist = maths.find_distance_to_line(x_end, y_end, slope, intercept) 
-                    if end_dist <= tolerance: 
+                if not end_matches:     
+                    if not (avoid_same_formula_error_consx_end or avoid_same_formula_error_consy_end): 
+                        end_dist = maths.find_distance_to_line(x_end, y_end, slope, intercept) 
+                    
+                        if end_dist <= tolerance: 
                             end_matches = True
                             end_line_name = line_name
-                    if end_dist < min_end_dist:
+                            x_s_checker_end = x_s
+                            y_s_checker_end = y_s
+                            x_e_checker_end = x_e
+                            y_e_checker_end = y_e
+
+                        if end_dist < min_end_dist:
                             min_end_dist = end_dist
                             temp_end_slope = slope
                             temp_end_intercept = intercept    
-                            temp_end_name_conn = line_name     
+                            temp_end_name_conn = line_name   
 
                 if start_matches and end_matches: #If a match is found break 
-                    break         
+                    break            
 
             #The below code takes the temp slopes and intercepts found in the above code, slopes and intercepts are split into different 
             if min_start_dist <= 25:
@@ -343,17 +385,19 @@ class datafiltration:
                 line_mistakes.append([name, x_start, y_start, x_end, y_end, closest_start_slope, closest_start_intercept, closest_end_slope, closest_end_intercept])
                 line_mistakes_check.append([name, x_start, y_start, x_end, y_end, start_line_name, end_line_name])
                 line_mistake_refs.append(lines_not_OCO_refs[idx])
-                line_line_connections.append([name, start_line_name, end_line_name])
+                line_line_connections_check.append([name, start_line_name, end_line_name, x_start, y_start, x_end, y_end])
+
+                #make sperate list for mistakes if name = name in function below than continue 
             if start_matches and end_matches: 
                 correct_lines.append([name, x_start, y_start, x_end, y_end]) 
                 line_mistakes_check.append([name, x_start, y_start, x_end, y_end, start_line_name, end_line_name])  
                 correct_line_refs.append(lines_not_OCO_refs[idx])  
-                line_line_connections.append([name, start_line_name, end_line_name])   
+                line_line_connections.append([name, start_line_name, end_line_name])  
+                situation_where.append([name, x_start, y_start, x_s_checker_start, y_s_checker_start, x_e_checker_start, y_e_checker_start,
+                                     x_end, y_end, x_s_checker_end, y_s_checker_end, x_e_checker_end, y_e_checker_end])
+                
 
-        print(f'The correct lines {correct_lines}')
-        print(f'The line mistakes {line_mistakes}')         
-
-        return line_mistakes, correct_lines, line_mistake_refs, correct_line_refs, line_line_connections
+        return line_mistakes, correct_lines, line_mistake_refs, correct_line_refs, line_line_connections, line_line_connections_check
     
     
     @staticmethod
@@ -417,6 +461,8 @@ class datafiltration:
                         
                 else: #both lines have slopes call sim eq func 
                     new_x_start, new_y_start = maths.solve_simultaneous_equations(closest_start_slope, closest_start_intercept, slope_line, intercept_line)
+                    if new_x_start is None: 
+                        new_x_start, new_y_start = x_start, y_start
 
                 # Fix the end points, same logic as above. 
                 if closest_end_slope is None:
@@ -426,12 +472,40 @@ class datafiltration:
                         
                 else: #Both lines have slopes call sim eq func 
                     new_x_end, new_y_end = maths.solve_simultaneous_equations(closest_end_slope, closest_end_intercept, slope_line, intercept_line)
+                    if new_x_end is None: 
+                        new_x_end, new_y_end = x_end, y_end
 
             fixed_lines.append([name, new_x_start, new_y_start, new_x_end, new_y_end])
             fixed_lines_box.append([name, new_x_start, new_y_start, new_x_end, new_y_end, closest_start_slope, closest_start_intercept, closest_end_slope, closest_end_intercept])
             
         return fixed_lines, fixed_lines_box, line_mistake_refs
     
+    @staticmethod
+    def fix_line_channel_return(fixed_lines, line_mistake_refs, wall_slopes, wall_intercepts, all_walls, line_line_connections_check, line_line_connections):
+        lines_OCO, lines_not_OCO, lines_OCO_refs, lines_not_OCO_refs, lines_cl = maths.Chanel_check_line(wall_slopes, wall_intercepts, fixed_lines, all_walls, line_mistake_refs)
+        
+        ll_connections = []
+        # print(f'Initial line line conn mistakes {line_line_connections_check}') 
+        # print(f'The amoutn of initial checks {len(line_line_connections_check)}')   
+        # print(f'Lines on CO {lines_OCO}')
+
+        for line_l in line_line_connections_check: 
+                name, start_line_name, end_line_name, x_start_c, y_start_c, x_end_c, y_end_c = line_l
+                line_is_OCO = False 
+                for line in lines_OCO: 
+                    line_name, x_start, y_start, x_end, y_end = line
+                    if line_name == name: 
+                        if abs(x_start - x_start_c) < 25 and abs(y_start - y_start_c) < 25 and abs(x_end - x_end_c) < 25 and abs(y_end - y_end_c) < 25: 
+                                line_is_OCO = True 
+
+                if not line_is_OCO: 
+                    ll_connections.append([name, start_line_name, end_line_name])
+
+        # print(f'final ll conections {ll_connections}')
+        # print(f'The amount of lines after check {len(ll_connections)}')
+        final_line_line_connections = line_line_connections + ll_connections 
+        return final_line_line_connections        
+
 
     @staticmethod
     def find_fixed_line_points(line_mistakes, fix_line_box): 
@@ -479,10 +553,12 @@ class datafiltration:
         return line_mistake_points  
     
     
-    def link_line_connections(self, lines, blockrefs): 
+    def link_line_connections(self, correct_lines, fixed_lines, blockrefs): 
         """ This function checks to see if lines start and end on block references """
         block_tolerences = self.block_tolerence(blockrefs)
         line_block_connections = [] 
+        lines = correct_lines + fixed_lines
+        print(f'This is the amount of lines {len(lines)}')
         for line in lines: 
             name, x_start, y_start, x_end, y_end = line 
             block_name_start = None 
@@ -491,13 +567,20 @@ class datafiltration:
             for block in block_tolerences: 
                 block_name, x, y, x_tolerence, y_tolerence = block 
 
+                tol = 1
+
                 if x_tolerence is None and y_tolerence is None: 
                     if (abs(x_start - x) < 1 and abs(y_start - y) < 1):
                         block_name_start = block_name 
                     if abs(x_end - x) < 1 and abs(y_end - y) < 1: 
                         block_name_end = block_name #
-                    
-                  
+
+                elif name == 'WALL':  #if walls start or end within the range of the block its on it
+                    if (x - x_tolerence - tol) <= x_start <= (x + x_tolerence + tol) and (y - y_tolerence - tol) <= y_start <= (y_tolerence + y + tol):
+                        block_name_start = block_name 
+                    if (x - x_tolerence - tol) <= x_end <= (x + x_tolerence + tol) and (y - y_tolerence - tol) <= y_end <= (y_tolerence + y + tol):   
+                        block_name_end = block_name 
+
                 else: #Below are the scenarios of positions a line could be at, at the end of a block to be considered drawn to that block 
                     if ((abs(x_start - (x + x_tolerence)) < 1 and abs(y_start - y) < 1) or  
                         (abs(x_start - (x - x_tolerence)) < 1 and abs(y_start - y) < 1) or 

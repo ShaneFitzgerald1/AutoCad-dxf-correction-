@@ -120,9 +120,18 @@ def before_after(fixed_all_blocks, blockrefs, lines, correct_lines, fixed_lines,
     # correct_lines.extend(fixed_lines)
     all_correct_lines = correct_lines + fixed_lines
 
+    sort_blockrefs = []
+    
+    for block in blockrefs: #sorting blockrefs 
+        name, x, y, angle, name_error = block 
+        if name_error is not None: 
+            sort_blockrefs.append([name_error, x, y, angle, name])
+        else:
+            sort_blockrefs.append([name, x, y, angle, name_error])    
+
     #These are all the accepted blocks and lines before they are passed through the correction code 
-    initial_accepted_blocks, initial_rejected_blocks = name_match_block(blockrefs, lines, 'INSERT', wall_slopes, wall_intercepts, all_walls, line_refs)
-    initial_accepted_line, initial_rejected_lines = name_match_block(blockrefs, lines, 'LINE', wall_slopes, wall_intercepts, all_walls, line_refs)
+    initial_accepted_blocks, initial_rejected_blocks = name_match_block(sort_blockrefs, lines, 'INSERT', wall_slopes, wall_intercepts, all_walls, line_refs)
+    initial_accepted_line, initial_rejected_lines = name_match_block(sort_blockrefs, lines, 'LINE', wall_slopes, wall_intercepts, all_walls, line_refs)
 
     #All accepted and rejected blocks post check, if an error arised here this is a big issue
     post_accepted_block, post_rejected_block = name_match_block(fixed_all_blocks, all_correct_lines, 'INSERT', wall_slopes, wall_intercepts, all_walls, line_refs)
@@ -228,6 +237,14 @@ def validate_categories(line_line_connections, line_block_connections):
                         continue 
                     if line_start_category is None or line_end_category is None: 
                         untrue_quantity_connections = True 
+
+                if cat == 'BRACE LINE':  #brace lines may fall short of studs 
+                    if line_start_category == 'CP' and line_end_category is None:
+                        safe_connections = True 
+                        untrue_quantity_connections = False 
+                    if line_end_category == 'CP' and line_start_category is None: 
+                        safe_connections = True       
+                        untrue_quantity_connections = False       
        
 
         if safe_connections and not untrue_quantity_connections: 
@@ -261,19 +278,19 @@ def validate_categories(line_line_connections, line_block_connections):
 
 
 
-# def add_new_object(name, obj_type, category, on_channel_outline):
-#     session = Session() 
-#     new_obj = ObjectID(name=name,
-#             type=obj_type,
-#             category=category,
-#             on_channel_outline=on_channel_outline) 
-#     session.add(new_obj)
-#     session.commit()
-#     session.close() 
+def add_new_object(name, obj_type, category, on_channel_outline):
+    session = Session() 
+    new_obj = ObjectID(name=name,
+            type=obj_type,
+            category=category,
+            on_channel_outline=on_channel_outline) 
+    session.add(new_obj)
+    session.commit()
+    session.close() 
 
-# add_new_object('60 SHS TRUSS LINE', 'LINE', 'SHS TRUSS LINE', 'No')
+add_new_object('205 TRUSS LINE', 'LINE', 'TRUSS LINE', 'No')
 
-# add_new_object('215 TRUSS LINE', 'LINE', 'TRUSS LINE', 'No')
+add_new_object('305 TRUSS LINE', 'LINE', 'TRUSS LINE', 'No')
 
 
 # add_new_object('CPSHS150x150x8-L', 'INSERT', 'CP', 'Yes' )   
