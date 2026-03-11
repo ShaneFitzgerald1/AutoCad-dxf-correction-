@@ -19,6 +19,11 @@ class BaseTable(QTableWidget):
         self.verticalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
 
+        self.setFont(QFont('Inter', 8))
+        # Set Inter font for headers
+        self.horizontalHeader().setFont(QFont('Inter', 8, QFont.Bold))
+        self.verticalHeader().setFont(QFont('Inter', 8))
+
     def colour_headers(self, colour): 
         self.horizontalHeader().setStyleSheet(f"QHeaderView::section {{background-color: {colour}; color: white; font-weight: bold; }}")
         self.verticalHeader().setStyleSheet(f"QHeaderView::section {{ background-color: {colour}; color: white;font-weight: bold; }}")

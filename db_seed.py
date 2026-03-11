@@ -103,25 +103,25 @@ objects_data = [
 
 
 
-# def seed_database():
-#     session = Session()
-#     try:
-#         existing_count = session.query(ObjectID).count()
-#         if existing_count > 0:
-#             print(f"Database already has {existing_count} objects. Skipping seed to avoid duplicates.")
-#             print("If you want to re-seed, clear the objects table first.")
-#             return
+def seed_database():
+    session = Session()
+    try:
+        existing_count = session.query(ObjectID).count()
+        if existing_count > 0:
+            print(f"Database already has {existing_count} objects. Skipping seed to avoid duplicates.")
+            print("If you want to re-seed, clear the objects table first.")
+            return
 
-#         objects = [ObjectID(**data) for data in objects_data]
-#         session.add_all(objects)
-#         session.commit()
-#         print(f"Successfully seeded {len(objects)} objects into the database.")
-#     except Exception as e:
-#         session.rollback()
-#         print(f"Seeding failed: {e}")
-#         raise
-#     finally:
-#         session.close()
+        objects = [ObjectID(**data) for data in objects_data]
+        session.add_all(objects)
+        session.commit()
+        print(f"Successfully seeded {len(objects)} objects into the database.")
+    except Exception as e:
+        session.rollback()
+        print(f"Seeding failed: {e}")
+        raise
+    finally:
+        session.close()
 
 
 
@@ -171,7 +171,7 @@ def seed_category_line_rules():
 
 
 if __name__ == '__main__':
-    # seed_database()
+    seed_database()
     seed_category_line_rules() 
 
 

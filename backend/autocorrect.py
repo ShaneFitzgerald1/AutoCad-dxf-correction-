@@ -132,13 +132,14 @@ def autocad_points(filepath):
 
     filtered_blockref, filtered_walls, filtered_insert_refs  = maths.Shape_outline(Blockref_Points, all_walls, insert_refs)
 
-    before_after(fixed_all_blocks, filtered_blockref, all_lines, correct_lines, fixed_lines, wall_slopes, wall_intercepts, all_walls, line_refs)
+    (post_accepted_blocks, post_accepted_lines, 
+     post_rejected_block, post_rejected_lines) = before_after(fixed_all_blocks, filtered_blockref, all_lines, correct_lines, fixed_lines, wall_slopes, wall_intercepts, all_walls, line_refs)
 
     line_block_connections = filter.link_line_connections(correct_lines, fixed_lines, fixed_all_blocks)
 
     final_line_line_connections = filter.fix_line_channel_return(fixed_lines, line_mistake_refs, wall_slopes, wall_intercepts, all_walls, line_line_connections_check, line_line_connections)
 
-    validate_categories(final_line_line_connections, line_block_connections)
+    line_name, all_fail = validate_categories(final_line_line_connections, line_block_connections)
 
     # print(f'These are the second last blocks {final_corrected_blocks}')
     finals_corrected_blocks = maths.return_error(final_corrected_blocks, mistake_points)
@@ -146,7 +147,9 @@ def autocad_points(filepath):
     return (doc, on_line_points, all_lines_table, 
         wall_slope_intercept, filtered_walls, mistake_points, 
         finals_corrected_blocks, line_mistakes, fixed_lines, final_corrected_refs, 
-        line_mistake_points, line_mistake_refs, duplicate_line_refs, line_duplicate_points)
+        line_mistake_points, line_mistake_refs, duplicate_line_refs, line_duplicate_points,
+        post_accepted_blocks, post_accepted_lines, 
+        post_rejected_block, post_rejected_lines, line_name, all_fail)
 
 def extract_polyline_points(polyline): #Convert wall points into x and y points 
         if polyline.dxftype() == 'LWPOLYLINE':
@@ -165,15 +168,10 @@ def update_dxf_in_place(filepath, output_filepath):
     (doc, on_line_points, all_lines_table, 
         wall_slope_intercept, filtered_walls, mistake_points, 
         corrected_blocks, line_mistakes, fixed_lines, corrected_block_refs, 
-        line_mistake_points, line_mistake_refs, duplicate_line_refs, duplicate_line_points) = autocad_points(filepath)
+        line_mistake_points, line_mistake_refs, duplicate_line_refs, duplicate_line_points,
+        _, _, _, _, _, _) = autocad_points(filepath)
     
     msp = doc.modelspace()
-    # print(f'These are the corrected blocks {corrected_blocks}')
-    # print(f'These are the mistake blocks {mistake_points}')
-
-    print(f"corrected_blocks length: {len(corrected_blocks)}")
-    print(f"corrected_block_refs length: {len(corrected_block_refs)}")
-    print(f"mistake_points length: {len(mistake_points)}")
 
     if 'CORRECTION_HIGHLIGHT' not in doc.layers:
         correction_layer = doc.layers.new('CORRECTION_HIGHLIGHT')

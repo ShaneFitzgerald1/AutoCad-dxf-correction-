@@ -392,7 +392,7 @@ class datafiltration:
                 correct_lines.append([name, x_start, y_start, x_end, y_end]) 
                 line_mistakes_check.append([name, x_start, y_start, x_end, y_end, start_line_name, end_line_name])  
                 correct_line_refs.append(lines_not_OCO_refs[idx])  
-                line_line_connections.append([name, start_line_name, end_line_name])  
+                line_line_connections.append([name, start_line_name, end_line_name, x_start, y_start, x_end, y_end])  
                 situation_where.append([name, x_start, y_start, x_s_checker_start, y_s_checker_start, x_e_checker_start, y_e_checker_start,
                                      x_end, y_end, x_s_checker_end, y_s_checker_end, x_e_checker_end, y_e_checker_end])
                 
@@ -499,7 +499,7 @@ class datafiltration:
                                 line_is_OCO = True 
 
                 if not line_is_OCO: 
-                    ll_connections.append([name, start_line_name, end_line_name])
+                    ll_connections.append([name, start_line_name, end_line_name, x_start_c, y_start_c, x_end_c, y_end_c])
 
         # print(f'final ll conections {ll_connections}')
         # print(f'The amount of lines after check {len(ll_connections)}')
@@ -599,7 +599,7 @@ class datafiltration:
                         block_name_end = block_name 
                     
                
-            line_block_connections.append([name, block_name_start, block_name_end]) 
+            line_block_connections.append([name, block_name_start, block_name_end, x_start, y_start, x_end, y_end]) 
         filtered_line_conns = self.filter_line_block_connections(line_block_connections) 
 
         return filtered_line_conns     
@@ -607,11 +607,11 @@ class datafiltration:
     def filter_line_block_connections(self, line_block_connections): 
         filtered_line_conn = []
         for line in line_block_connections: 
-            name, block_name_start, block_name_end = line 
+            name, block_name_start, block_name_end, x_start, y_start, x_end, y_end = line 
             if (block_name_start is None or block_name_start == 'TRUSS VERTICAL') and (block_name_end is None or block_name_end == 'TRUSS VERTICAL'): 
                 continue 
 
-            filtered_line_conn.append([name, block_name_start, block_name_end])
+            filtered_line_conn.append([name, block_name_start, block_name_end, x_start, y_start, x_end, y_end])
 
         return filtered_line_conn    
  

@@ -155,7 +155,10 @@ def before_after(fixed_all_blocks, blockrefs, lines, correct_lines, fixed_lines,
     print(f'Post correction there are {len(post_accepted_line)} Accepted Lines and {len(post_rejected_lines)} Rejected Lines from the object Database')
     for line in post_rejected_lines: 
         name, xs, ys, xe, ye, rejection_reason = line 
-        print(f'Line: {(name), (xs), (ys), (xe), (ye)}: {rejection_reason}')    
+        print(f'Line: {(name), (xs), (ys), (xe), (ye)}: {rejection_reason}')   
+
+
+    return post_accepted_block, post_accepted_line, post_rejected_block, post_rejected_lines 
 
 
 
@@ -163,18 +166,19 @@ def categories_sorter(line_connections):
     category_list = [] 
 
     for line in line_connections: 
-        line_name, line_start_entity, line_end_entity = line 
+        line_name, line_start_entity, line_end_entity, x_start, y_start, x_end, y_end = line 
 
         line_category = get_category(line_name)
         line_start_category = get_category(line_start_entity)
         line_end_category = get_category(line_end_entity)
 
-        category_list.append([line_name, line_category, line_start_category, line_end_category])
+        category_list.append([line_name, line_category, line_start_category, line_end_category, x_start, y_start, x_end, y_end])
 
     return category_list     
 
     
 def get_category(line_name): 
+    """Function that puts each line name into a category based on its name"""
     objects = get_catalogue()
     if line_name is None: 
         return None 
@@ -187,24 +191,17 @@ def get_category(line_name):
 
 def validate_categories(line_line_connections, line_block_connections):
     categories = get_category_catalogue() 
-    # print(f'These are the categories {categories}')
 
     ll_connections = categories_sorter(line_line_connections)
     lb_connections = categories_sorter(line_block_connections)
-    # print(f'Line line before filter {line_line_connections}')
-    # print(f'Line line post filter {ll_connections }')
-
-    # print(f'These are line block before filter {line_block_connections}')
-    # print(f'These are the line block after filtering {lb_connections}')
     all_connections = ll_connections + lb_connections
-    correct_connections = []
+    correct_connections_cat = []
     mand_fail = []
     quantity_fail = []
     both_fail = []
-    # print(f'These are all line connections {all_connections}')
 
     for line in all_connections: 
-        line_name, line_category, line_start_category, line_end_category = line 
+        line_name, line_category, line_start_category, line_end_category, x_start, y_start, x_end, y_end = line 
         safe_connections = False 
         untrue_quantity_connections = False 
 
@@ -248,21 +245,24 @@ def validate_categories(line_line_connections, line_block_connections):
        
 
         if safe_connections and not untrue_quantity_connections: 
-            correct_connections.append([line_name])  
+            correct_connections_cat.append([line_name])  
         if not safe_connections and not untrue_quantity_connections: 
-            mand_fail.append([line_name, line_category, line_start_category, line_end_category])
+            mand_fail.append([line_name, x_start, y_start, line_start_category, x_end, y_end, line_end_category, 'Line starts or ends on an incorrect line, object, or position.'])
         if safe_connections and untrue_quantity_connections: 
-            quantity_fail.append([line_name])
+            quantity_fail.append([line_name, x_start, y_start, line_start_category, x_end, y_end, line_end_category, 'Line must end on the specified object.'])
         if not safe_connections and untrue_quantity_connections: 
-            both_fail.append([line_name, line_category, line_start_category, line_end_category])
+            both_fail.append([line_name, x_start, y_start, line_start_category, x_end, y_end, line_end_category, 'Line start/end is incorrect or does not end on the required object.'])
 
-
-    print(f'{len(correct_connections)} Lines were approved by the Category DataBase')
+    print(f'{len(correct_connections_cat)} Lines were approved by the Category DataBase')
     print(f'{len(mand_fail)} Lines were disapproved due to lines ending on incorrect lines/objects')
     print(f'These are the mand fail lines {mand_fail}')
     print(f'{len(quantity_fail)} Lines were disapproved due to lines not ending on lines/objects')
     print(f'{len(both_fail)} Lines were disapproved due to lines not ending on lines/objects and ending on incorrect object')
     print(f'Both failed lines is {both_fail}')
+
+    all_fail_cat = mand_fail + quantity_fail + both_fail 
+
+    return correct_connections_cat, all_fail_cat
 
     
 
@@ -278,19 +278,19 @@ def validate_categories(line_line_connections, line_block_connections):
 
 
 
-def add_new_object(name, obj_type, category, on_channel_outline):
-    session = Session() 
-    new_obj = ObjectID(name=name,
-            type=obj_type,
-            category=category,
-            on_channel_outline=on_channel_outline) 
-    session.add(new_obj)
-    session.commit()
-    session.close() 
+# def add_new_object(name, obj_type, category, on_channel_outline):
+#     session = Session() 
+#     new_obj = ObjectID(name=name,
+#             type=obj_type,
+#             category=category,
+#             on_channel_outline=on_channel_outline) 
+#     session.add(new_obj)
+#     session.commit()
+#     session.close() 
 
-add_new_object('205 TRUSS LINE', 'LINE', 'TRUSS LINE', 'No')
+# add_new_object('205 TRUSS LINE', 'LINE', 'TRUSS LINE', 'No')
 
-add_new_object('305 TRUSS LINE', 'LINE', 'TRUSS LINE', 'No')
+# add_new_object('305 TRUSS LINE', 'LINE', 'TRUSS LINE', 'No')
 
 
 # add_new_object('CPSHS150x150x8-L', 'INSERT', 'CP', 'Yes' )   
