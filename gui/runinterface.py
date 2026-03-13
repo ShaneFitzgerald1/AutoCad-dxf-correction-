@@ -1,10 +1,11 @@
 import sys
 from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtGui import QFont 
+from PyQt5.QtGui import QFont, QPixmap 
 from PyQt5.QtCore import Qt 
 from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QGridLayout, QTableWidget, QLabel, QSizePolicy, QHeaderView, QMessageBox, QFileDialog, QTableWidgetItem, QPushButton, QHBoxLayout, QTabWidget
 from backend.autocorrect import *
 from gui.base_table import BaseTable
+from utils import resource_path
 from gui.table_widget import LabeledTableWidget
 
 
@@ -22,12 +23,32 @@ class MyWindow(QMainWindow):
 
         self.tab1 = QWidget()
         self.tab1_grid = QGridLayout()
+        vbox_import = QVBoxLayout() #The vbox for hte main import tab, what is seen when GUI is intiially opened
 
-        top_spacer = QWidget()
-        self.tab1_grid.addWidget(top_spacer, 0, 0, 1, 2)
+        # Logo in top left
+        logo_label = QLabel()
+        pixmap = QPixmap(resource_path('mjhlogo.png'))
+        scaled_pixmap = pixmap.scaled(300, 150, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        logo_label.setPixmap(scaled_pixmap)
+        logo_label.setAlignment(Qt.AlignLeft)
+        self.tab1_grid.addWidget(logo_label, 0, 0, 1, 1)  # row 0, col 0
 
+        #Instruction label 
+        Instruction = QLabel(f'Import a DXF File to begin analysis')
+        Instruction.setAlignment(Qt.AlignCenter)
+        Instruction.setFont(QFont('Inter', 14, QFont.Bold))
+        self.tab1_grid.addWidget(Instruction, 0, 1, 1, 1)
+
+        #Label for defining the app state
+        self.appstatus_vbox = QVBoxLayout()
+        self.status_label = QLabel('Current File: None\nApp State: No File Loaded')
+        self.status_label.setAlignment(Qt.AlignRight | Qt.AlignTop)
+        self.status_label.setFont(QFont('Inter', 12))
+        self.appstatus_vbox.addWidget(self.status_label)
+        self.tab1_grid.addLayout(self.appstatus_vbox, 0, 2, 1, 1)
+
+        #Installing push buttons 
         vbox_t = QVBoxLayout()
-
         hbox1 = QHBoxLayout()
         self.Button1 = self.create_buttons('Import File', self.import_dxf_file, hbox1, "QPushButton {background-color: #0000FF; color: white;} QPushButton:hover{background-color: #00008B;}")
         self.Button2 = self.create_buttons('Fix Errors', self.fix_errors, hbox1, "QPushButton {background-color: #0000FF; color: white;} QPushButton:hover{background-color: #00008B;}")
@@ -37,14 +58,32 @@ class MyWindow(QMainWindow):
         self.Button3 = self.create_buttons('Reset App', self.reset_app, hbox2, "QPushButton {background-color: #0000FF; color: white;} QPushButton:hover{background-color: #00008B;}")
         vbox_t.addLayout(hbox2)
 
-        self.tab1_grid.addLayout(vbox_t, 1, 0, 1, 2)  # ← row 1, col 0, spans 2 columns
+        self.tab1_grid.addLayout(vbox_t, 2, 0, 1, 3)
 
         bottom_spacer = QWidget()
-        self.tab1_grid.addWidget(bottom_spacer, 2, 0, 1, 2)
+        self.tab1_grid.addWidget(bottom_spacer, 3, 0, 1, 3)
 
-        self.tab1_grid.setRowStretch(0, 1)
+        self.tab1_grid.setRowStretch(0, 0)  # ← 0 so logo row doesn't expand
         self.tab1_grid.setRowStretch(1, 0)
         self.tab1_grid.setRowStretch(2, 1)
+
+
+        # ---- Summary results placeholder in row 2 ----
+        self.summary_container = QWidget()
+        self.summary_container.setVisible(False)  # hidden until file loads
+        self.tab1_grid.addWidget(self.summary_container, 3, 0, 1, 3)
+
+        self.tab1_grid.setRowStretch(0, 0)
+        self.tab1_grid.setRowStretch(1, 0)
+        self.tab1_grid.setRowStretch(2, 1)  # summary row expands
+
+        self.tab1_grid.setColumnStretch(0, 1)
+        self.tab1_grid.setColumnStretch(1, 1)
+        self.tab1_grid.setColumnStretch(2, 1)
+
+        #Setting the tab itself
+        self.tab1.setLayout(self.tab1_grid)
+        self.tabs.addTab(self.tab1, "Import")
 
         self.tab1.setLayout(self.tab1_grid)
         self.tabs.addTab(self.tab1, "Import")
@@ -101,7 +140,7 @@ class MyWindow(QMainWindow):
         
         self.populate_results_table()
         
-        self.tabs.setCurrentIndex(1) # swapping to results tab
+        # self.tabs.setCurrentIndex(1) # swapping to results tab
 
     def results_fixation(self): 
         tab3 = QWidget()
@@ -110,33 +149,30 @@ class MyWindow(QMainWindow):
         block_ref_headers = ['Name', 'x', 'y']
         line_headers = ['Name', 'x start', 'y start', 'x end', 'y end']
 
-        vbox1 = LabeledTableWidget('Insert Block Reference Errors Located at Points:',block_ref_headers,BaseTable.RED)
-        vbox2 = LabeledTableWidget('Block Reference Errors Fixed to Points:',block_ref_headers, BaseTable.GREEN)
-        vbox3 = LabeledTableWidget('Insert Line Errors Located at Points: ',line_headers, BaseTable.RED)
-        vbox4 = LabeledTableWidget('Line Insert Errors fixed to Points:',line_headers, BaseTable.GREEN)
+        if len(self.mistake_points) > 0: 
 
-        self.table5 = vbox1.table
-        self.table6 = vbox2.table
-        self.table7 = vbox3.table
-        self.table8 = vbox4.table
-
-        grid.addLayout(vbox1, 0, 0, 1, 1)
-        grid.addLayout(vbox2, 0, 1, 1, 1)
-        grid.addLayout(vbox3, 1, 0, 1, 1)
-        grid.addLayout(vbox4, 1, 1, 1, 1)
-
-        grid.setRowStretch(0, 1)   
-        grid.setRowStretch(1, 1)
-        grid.setColumnStretch(0, 1)
-        grid.setColumnStretch(1, 1)
-
+            vbox1 = LabeledTableWidget('Insert Block Reference Errors Located at Points:',block_ref_headers,BaseTable.RED)
+            vbox2 = LabeledTableWidget('Block Reference Errors Fixed to Points:',block_ref_headers, BaseTable.GREEN)
+            self.table5 = vbox1.table
+            self.table6 = vbox2.table
+            grid.addLayout(vbox1, 0, 0, 1, 1)
+            grid.addLayout(vbox2, 0, 1, 1, 1)
+            self.table5.populate(self.mistake_points)
+            self.table6.populate(self.corrected_blocks)
+       
+        if len(self.line_mistakes) > 0: 
+            vbox3 = LabeledTableWidget('Insert Line Errors Located at Points: ',line_headers, BaseTable.RED)
+            vbox4 = LabeledTableWidget('Line Insert Errors fixed to Points:',line_headers, BaseTable.GREEN)
+            self.table7 = vbox3.table
+            self.table8 = vbox4.table
+            grid.addLayout(vbox3, 1, 0, 1, 1)
+            grid.addLayout(vbox4, 1, 1, 1, 1)
+            self.table7.populate(self.line_mistakes)
+            self.table8.populate(self.fixed_lines)
+    
         tab3.setLayout(grid)
-        
         self.tabs.addTab(tab3, "Error Fixation") #Add tab2 to tab Widget
-        
-        self.populate_fixation() #Populate the tables 
-        
-        self.tabs.setCurrentIndex(2) # Switch to the Results tab
+   
 
     def database_results(self): 
         tab4 = QWidget() 
@@ -146,64 +182,65 @@ class MyWindow(QMainWindow):
         vbox2 = QVBoxLayout()    
 
         #Object Database 
-        titlelabel1 = QLabel('Object Database') 
-        titlelabel1.setAlignment(Qt.AlignCenter)
-        titlelabel1.setFont(QFont('Inter', 14, QFont.Bold))
-
-        subtitlelabel1 = QLabel('The Object Database ensures all autocad objects in the file are expected. Any object with an unexpected name or position are returned below')
-        subtitlelabel1.setAlignment(Qt.AlignCenter)
-        subtitlelabel1.setFont(QFont('Inter', 10))
-
-        vbox1.addWidget(titlelabel1)
-        vbox1.addWidget(subtitlelabel1)
 
         tables_hbox1 = QHBoxLayout() 
 
-        left_vbox = QVBoxLayout()
-        left_label = QLabel(f"There are {len(self.post_accepted_blocks)} Accepted Blocks and and {len(self.post_rejected_blocks)} Rejected Blocks from the Object Database ")
-        left_label.setFont(QFont('Inter', 10))
-        left_vbox.addWidget(left_label)
-
         if len(self.post_rejected_blocks) > 0: 
+            titlelabel1 = QLabel('Object Database') 
+            titlelabel1.setAlignment(Qt.AlignCenter)
+            titlelabel1.setFont(QFont('Inter', 14, QFont.Bold))
+
+            subtitlelabel1 = QLabel('The Object Database ensures all autocad objects in the file are expected. Objects are checked against the database based on their name, object type, category and weather it should be on the channel outline. Any object with an unexpected name or position are returned below')
+            subtitlelabel1.setAlignment(Qt.AlignCenter)
+            subtitlelabel1.setFont(QFont('Inter', 10))
+
+            vbox1.addWidget(titlelabel1)
+            vbox1.addWidget(subtitlelabel1)
+    
+            left_vbox = QVBoxLayout()
+            left_label = QLabel(f"There was {len(self.post_rejected_blocks)} Rejected Block(s) {self.cross} from the Object Database ")
+            left_label.setFont(QFont('Inter', 10))
+            left_vbox.addWidget(left_label)
+
             block_headers = ['Name', 'x', 'y', 'Reason']
             left_vbox_internal = LabeledTableWidget('Unexpected Blocks:',block_headers,BaseTable.RED)
             self.table9 = left_vbox_internal.table
             left_vbox.addLayout(left_vbox_internal)
+            tables_hbox1.addLayout(left_vbox)
             self.table9.populate(self.post_rejected_blocks)
-            
-        right_vbox = QVBoxLayout() 
-        right_label = QLabel(f'There are {len(self.post_accepted_lines)} Accepted Lines and {len(self.post_rejected_lines)} Rejected Lines from the Object Database')    
-        right_label.setFont(QFont('Inter', 10))
-        right_vbox.addWidget(right_label)
 
-        if len(self.post_rejected_lines) > 0:     
-            line_headers = ['Name', 'x_start', 'y_start', 'x_end', 'y_end', 'Reason']
+        if len(self.post_rejected_lines) > 0:    
+            right_vbox = QVBoxLayout() 
+            right_label = QLabel(f'There was {len(self.post_rejected_lines)} Rejected Line(s) {self.cross} from the Object Database')    
+            right_label.setFont(QFont('Inter', 10))
+            right_vbox.addWidget(right_label)
+    
+            line_headers = ['Name', 'x start', 'y tart', 'x end', 'y end', 'Reason']
             right_vbox_internal = LabeledTableWidget('Unexpected Lines:', line_headers, BaseTable.RED)
             self.table10 = right_vbox_internal.table
             right_vbox.addLayout(right_vbox_internal)
-            self.table10.populate(self.post_rejected_blocks)
+            self.table10.populate(self.post_rejected_lines)
+            tables_hbox1.addLayout(right_vbox)
 
-        tables_hbox1.addLayout(left_vbox)
-        tables_hbox1.addLayout(right_vbox)
         vbox1.addLayout(tables_hbox1)
 
         #Category Database 
-        titlelabel2 = QLabel('Category Database')
-        titlelabel2.setAlignment(Qt.AlignCenter)
-        titlelabel2.setFont(QFont('Inter', 14, QFont.Bold))
-
-        subtitlelabel2 = QLabel('The category Database checks all objects to ensure they start and end on the correct Block/Line.')
-        subtitlelabel2.setAlignment(Qt.AlignCenter)
-        subtitlelabel2.setFont(QFont('Inter', 10))
-
-        main_label = QLabel(f'There are {len(self.line_name)} Accepted Lines and {len(self.all_fail)} Rejected Lines by the Category Rejected Lines.')
-        main_label.setFont(QFont('Inter', 10))
-        vbox2.addWidget(titlelabel2)
-        vbox2.addWidget(subtitlelabel2)
-        vbox2.addWidget(main_label)
-
         if len(self.all_fail) > 0:
-            category_headers = ['Name', 'x_start', 'y_start', 'Category', 'x_end', 'y_end', 'Category', 'Reason']
+            titlelabel2 = QLabel('Category Database')
+            titlelabel2.setAlignment(Qt.AlignCenter)
+            titlelabel2.setFont(QFont('Inter', 14, QFont.Bold))
+
+            subtitlelabel2 = QLabel('The category Database checks all objects to ensure they start and end on the correct Block/Line.')
+            subtitlelabel2.setAlignment(Qt.AlignCenter)
+            subtitlelabel2.setFont(QFont('Inter', 10))
+
+            main_label = QLabel(f'There are {len(self.line_name)} Accepted Lines {self.check} and {len(self.all_fail)} Rejected Line(s) {self.cross} by the Category Database.')
+            main_label.setFont(QFont('Inter', 10))
+            vbox2.addWidget(titlelabel2)
+            vbox2.addWidget(subtitlelabel2)
+            vbox2.addWidget(main_label)
+            
+            category_headers = ['Name', 'x start', 'y start', 'Start Object Category', 'x end', 'y end', 'End Object Category', 'Reason']
             vbox_internal = LabeledTableWidget('Failed Lines', category_headers, BaseTable.RED)
             self.table11 = vbox_internal.table
             vbox2.addLayout(vbox_internal)
@@ -214,45 +251,242 @@ class MyWindow(QMainWindow):
         grid.addLayout(vbox2, 1, 0)
 
         tab4.setLayout(grid)
+
         self.tabs.addTab(tab4, "Database Results")
+
+
+    check = "\u2705"      # ✅
+    cross = "\u274C"      # ❌
+    warning = "\u26A0"    # ⚠
+
+    def results_summary(self): 
+        godvbox1 = QVBoxLayout()
+        godvbox2 = QVBoxLayout() 
+
+        tab5 = QWidget() 
+        grid = QGridLayout() 
+        vbox1 = QVBoxLayout()
+        vbox2 = QVBoxLayout()
+        vboxgeo1 = QVBoxLayout() 
+        vboxgeo2 = QVBoxLayout() 
+        hboxgeo1 = QHBoxLayout()
+        hboxdata = QHBoxLayout() 
+        vboxdata1 = QVBoxLayout() 
+        vboxdata2 = QVBoxLayout() 
+
+        QMLabel = QLabel('Results Summary')
+        QMLabel.setAlignment(Qt.AlignCenter)
+        QMLabel.setFont(QFont('Inter', 14, QFont.Bold))
+
+        QtitLabel = QLabel('Geometry Engine') 
+        QtitLabel.setAlignment(Qt.AlignCenter)
+        QtitLabel.setFont(QFont('Inter', 12, QFont.Bold))
+
+        if len(self.mistake_points) > 0: 
+            QLabel1 = QLabel(f'There were {len(self.on_line_points) - len(self.mistake_points)} Block(s) Accepted {self.check} and {len(self.mistake_points)} Block(s) Rejected {self.cross} by the Geometry Engine')
+            QLabel1.setAlignment(Qt.AlignCenter)
+            QLabel1.setFont(QFont('Inter', 10))
+
+            if len(self.mistake_points) == 1: #Getting the language correct 
+                QLabel2 = QLabel(f'{len(self.corrected_blocks)} Block was corrected {self.warning} by the Geometry Engine')
+            else:
+                QLabel2 = QLabel(f'{len(self.corrected_blocks)} Blocks were corrected {self.warning} by the Geometry Engine')
+
+            QLabel2.setAlignment(Qt.AlignCenter)
+            QLabel2.setFont(QFont('Inter', 10))
+            vboxgeo1.addWidget(QLabel1)
+            vboxgeo1.addWidget(QLabel2)
+
+        if len(self.mistake_points) < 1: 
+            QLabel1 = QLabel(f'All {len(self.on_line_points)} Blocks were accepted by the Geometry Engine {self.check}')
+            QLabel1.setAlignment(Qt.AlignCenter)
+            QLabel1.setFont(QFont('Inter', 10))
+            vboxgeo1.addWidget(QLabel1)
+
+        if len(self.line_mistakes) > 0: 
+            QLabel3 = QLabel(f'There were {len(self.all_lines_table) - len(self.line_mistakes)} Line(s) Accepted {self.check} and {len(self.line_mistakes)} Line(s) Rejected {self.cross} by the Geometry Engine')
+            QLabel3.setAlignment(Qt.AlignCenter)
+            QLabel3.setFont(QFont('Inter', 10))
+
+            if len(self.line_mistakes) == 1: 
+                QLabel4 = QLabel(f'{len(self.fixed_lines)} Line was corrected {self.warning} by the Geometry Engine')
+            else:     
+                QLabel4 = QLabel(f'{len(self.fixed_lines)} Lines were corrected {self.warning} by the Geometry Engine')
+
+            QLabel4.setAlignment(Qt.AlignCenter)
+            QLabel4.setFont(QFont('Inter', 10))
+
+            vboxgeo2.addWidget(QLabel3)
+            vboxgeo2.addWidget(QLabel4)
+
+        if len(self.line_mistakes) < 1: 
+            QLabel3 = QLabel(f'All {len(self.all_lines_table)} Lines were accepted by the Geometry Engine {self.check}')   
+            QLabel3.setAlignment(Qt.AlignCenter)
+            QLabel3.setFont(QFont('Inter', 10))
+            vboxgeo2.addWidget(QLabel3)
+
+        vbox1.addWidget(QMLabel)
+        vbox1.addWidget(QtitLabel)
+
+   
+        hboxgeo1.addLayout(vboxgeo1)
+        hboxgeo1.addLayout(vboxgeo2)
+
+        vbox1.addLayout(hboxgeo1)
+
+        if len(self.corrected_blocks) > 0 or len(self.fixed_lines) > 0: 
+            QLabelerr = QLabel(f'{self.warning}See Error Fixation Tab for more details {self.warning}') 
+            QLabelerr.setAlignment(Qt.AlignCenter)  # ← you had QLabel3 here by mistake
+            QLabelerr.setFont(QFont('Inter', 10))
+            vbox1.addWidget(QLabelerr)
+
+        #Database stuff 
+
+        QtitLabel2 = QLabel('Database Rules')
+        QtitLabel2.setAlignment(Qt.AlignCenter)
+        QtitLabel2.setFont(QFont('Inter', 12, QFont.Bold))
+        vbox2.addWidget(QtitLabel2)
+
+        QtitLabel3 = QLabel('Object DataBase')
+        QtitLabel3.setAlignment(Qt.AlignCenter)
+        QtitLabel3.setFont(QFont('Inter', 11, QFont.Bold))
+        vboxdata1.addWidget(QtitLabel3)
+
+        if (len(self.post_rejected_blocks)) > 0: 
+            QLabel5 = QLabel(f'There were {len(self.post_accepted_blocks)} Block(s) Accepted {self.check} and {len(self.post_rejected_blocks)} Block(s) Rejected {self.cross} by the Object Database')
+        else:     
+            QLabel5 = QLabel(f'All {len(self.post_accepted_blocks)} Blocks were accepted by the Object Database {self.check}')  
+
+        QLabel5.setAlignment(Qt.AlignCenter)
+        QLabel5.setFont(QFont('Inter', 10))
+        vboxdata1.addWidget(QLabel5)
+
+
+        if len(self.post_rejected_lines) > 0: 
+            QLabel6 = QLabel(f'There were {len(self.post_accepted_lines)} Line(s) Accepted {self.check} and {len(self.post_rejected_lines)} Line(s) Rejected {self.cross} by the Object Database ')  
+            vboxdata1.addWidget(QLabel6)
+
+        else: 
+            QLabel6 = QLabel(f'All {len(self.post_accepted_lines)} Lines were accepted by the Object Database {self.check} ')    
+
+        QLabel6.setAlignment(Qt.AlignCenter)
+        QLabel6.setFont(QFont('Inter', 10))
+        vboxdata1.addWidget(QLabel6)
+
+        hboxdata.addLayout(vboxdata1)    
+        vbox2.addLayout(hboxdata)
+
+        #Category database 
+
+        QtitLabel4 = QLabel(f'Category Database')
+        QtitLabel4.setAlignment(Qt.AlignCenter)
+        QtitLabel4.setFont(QFont('Inter', 11, QFont.Bold))
+        vboxdata2.addWidget(QtitLabel4)
+
+        if len(self.all_fail) > 0: 
+            QLabel7 = QLabel(f'There were {len(self.line_name)} Accepted Line(s) {self.check} and {len(self.all_fail)} Rejected Line(s) {self.cross} from the Category Database ')
+        else: 
+            QLabel7 = QLabel(f'All {len(self.line_name)} were accepted by the Category Database {self.check}')
+
+        QLabel7.setAlignment(Qt.AlignCenter)
+        QLabel7.setFont(QFont('Inter', 10))
+        vboxdata2.addWidget(QLabel7)
+    
+        if len(self.all_fail) > 0 or len(self.post_rejected_lines) > 0 or len(self.post_rejected_blocks) > 0: 
+            dataerror2 = QLabel(f'{self.warning}See Database Results Tab for more details {self.warning}')
+            dataerror2.setAlignment(Qt.AlignCenter)
+            dataerror2.setFont(QFont('Inter', 10))
+            vbox2.addWidget(dataerror2)
+       
+        hboxdata.addLayout(vboxdata2)
+        vbox2.addLayout(hboxdata)   
+
+        container_geo = QWidget()
+        container_geo.setObjectName("summary_container")
+        container_geo.setStyleSheet("#summary_container { border: 1px solid black; border-radius: 5px; }")
+
+        container_cat = QWidget()
+        container_cat.setObjectName("summary_container")
+        container_cat.setStyleSheet("#summary_container { border: 1px solid black; border-radius: 5px; }")
+
+        container2 = QWidget()
+        container2.setObjectName("summary_container")
+        container2.setStyleSheet("#summary_container { border: 1px solid black; border-radius: 5px; }")
+      
+
+        container_geo.setLayout(vbox1)
+        container_cat.setLayout(vbox2)    
+        godvbox2.addLayout(vbox1)
+        godvbox2.addLayout(vbox2)
+
+        #setting the boxses
+        container2.setLayout(godvbox2)
+
+        godvbox2.addWidget(container_geo)
+        godvbox2.addWidget(container_cat)
+
+
+        grid.addLayout(godvbox1, 0, 0)  
+        grid.addWidget(container2, 1, 0)
+        # grid.addLayout(godvbox2, 1, 0)
+        tab5.setLayout(grid)
+        # self.tabs.addTab(tab5, "Results Summary")
+
+        # Clear any previous layout on the container
+        if self.summary_container.layout():
+            QWidget().setLayout(self.summary_container.layout())
+
+        self.summary_container.setLayout(godvbox2)
+        self.summary_container.setVisible(True)  
 
     def populate_results_table(self): 
         #populate the results table  
         self.table1.populate(self.on_line_points)
         self.table2.populate(self.wall_slope_intercept)
         self.table3.populate(self.all_lines_table)
-        self.table4.populate(self.filtered_walls)            
-
-    def populate_fixation(self): 
-        #Populate the fixed tables 
-        self.table5.populate(self.mistake_points)
-        self.table6.populate(self.corrected_blocks)
-        self.table7.populate(self.line_mistakes)
-        self.table8.populate(self.fixed_lines)
-
+        self.table4.populate(self.filtered_walls)      
+   
     def import_dxf_file(self):
-        """Opens file dialog and returns selected DXF file path"""
-        filepath, _ = QFileDialog.getOpenFileName(None, "Select DXF File","", "DXF Files (*.dxf);;All Files (*)")
-    
+
+        self.original_filepath = None
+        
+        while self.tabs.count() > 1:
+            self.tabs.removeTab(1)
+        self.summary_container.setVisible(False)    
+
+        filepath, _ = QFileDialog.getOpenFileName(None, "Select DXF File", "", "DXF Files (*.dxf);;All Files (*)")
+
         if filepath:
             self.original_filepath = filepath
+            result = autocad_points(filepath)
 
-            (_, self.on_line_points, 
-             self.all_lines_table, self.wall_slope_intercept, 
-             self.filtered_walls, self.mistake_points, 
-            self.corrected_blocks, self.line_mistakes, 
-            self.fixed_lines, _, _, _, _, _, 
-            self.post_accepted_blocks, self.post_accepted_lines, 
+            if result is None:
+                QMessageBox.warning(None, "Invalid File", "The selected file is missing lines, blocks, or a channel outline. Please check the file and try again.")
+                self.original_filepath = None
+                return
+            
+            import os
+            self.status_label.setText(f'Current File: {os.path.basename(filepath)}\nApp State: File Loaded ✅')
+
+            (_, self.on_line_points,
+            self.all_lines_table, self.wall_slope_intercept,
+            self.filtered_walls, self.mistake_points,
+            self.corrected_blocks, self.line_mistakes,
+            self.fixed_lines, _, _, _, _, self.line_duplicate_points,
+            self.post_accepted_blocks, self.post_accepted_lines,
             self.post_rejected_blocks, self.post_rejected_lines,
-            self.line_name, self.all_fail) = autocad_points(filepath)
+            self.line_name, self.all_fail) = result
 
             self.create_results_tab()
 
-            self.results_fixation()
-            self.populate_fixation()
-
-            self.database_results() 
+            if len(self.mistake_points) > 0 or len(self.line_mistakes) > 0: 
+                self.results_fixation()
+            if len(self.post_rejected_blocks) > 0 or len(self.post_rejected_lines) or len(self.all_fail) > 0:  
+                self.database_results()
+            self.results_summary() 
             QMessageBox.information(None, "Success", f"File loaded:\n{filepath}")
+
+        return filepath      
 
     def fix_errors(self):
         if not self.original_filepath: 
@@ -281,11 +515,9 @@ class MyWindow(QMainWindow):
         while self.tabs.count() > 1:
             self.tabs.removeTab(1)
 
+        import os
+        self.status_label.setText(f'Current File: None \nApp State: No file Loaded')
 
-# def window(): 
-#     app = QApplication(sys.argv)
-#     win = MyWindow()
-#     win.show()
-#     sys.exit(app.exec_())
+        self.summary_container.setVisible(False)
 
-# window()
+

@@ -115,41 +115,43 @@ def autocad_points(filepath):
         points = extract_polyline_points(polyline)
         all_walls.append(points)
 
-       
+    if len(all_lines) < 1 or len(all_walls) < 1 or len(Blockref_Points) < 1: 
+        return None 
 
-    wall_lengths = maths.wall_len(all_lines)  
-    slopes, y_intercepts, line_properties, wall_slopes, wall_intercepts = maths.slope_values(all_lines, all_walls) 
-    wall_slope_intercept = pres.combine_slope_walls(wall_lengths, slopes, y_intercepts)
-    (blocks_on_line, mistake_points, final_corrected_blocks,
-     final_corrected_refs, filtered_walls, 
-     correct_blocks, fixed_all_blocks) = filter.On_Channel_Line(Blockref_Points, all_walls, insert_refs, line_properties, tolerance=1, tolerance_2=5)
-    on_line_points, all_lines_table = pres.what_line(blocks_on_line, filtered_walls, all_lines, tolerance = 1)
-    (line_mistakes, correct_lines, line_mistake_refs, 
-     correct_line_refs, line_line_connections, line_line_connections_check) = filter.find_line_error(all_lines, all_walls, line_refs, line_properties, wall_slopes, wall_intercepts, tolerance=1)
-    fixed_lines, fixed_lines_box, line_mistake_refs = filter.fix_line_mistakes(line_mistakes, line_mistake_refs)
-    line_mistake_points = filter.find_fixed_line_points(line_mistakes, fixed_lines_box)
-    duplicate_line_refs, line_duplicate_points = filter.remove_duplicate_lines(all_lines, line_refs)
+    else: 
+        wall_lengths = maths.wall_len(all_lines)  
+        slopes, y_intercepts, line_properties, wall_slopes, wall_intercepts = maths.slope_values(all_lines, all_walls) 
+        wall_slope_intercept = pres.combine_slope_walls(wall_lengths, slopes, y_intercepts)
+        (blocks_on_line, mistake_points, final_corrected_blocks,
+        final_corrected_refs, filtered_walls, 
+        correct_blocks, fixed_all_blocks) = filter.On_Channel_Line(Blockref_Points, all_walls, insert_refs, line_properties, tolerance=1, tolerance_2=5)
+        on_line_points, all_lines_table = pres.what_line(blocks_on_line, filtered_walls, all_lines, tolerance = 1)
+        (line_mistakes, correct_lines, line_mistake_refs, 
+        correct_line_refs, line_line_connections, line_line_connections_check) = filter.find_line_error(all_lines, all_walls, line_refs, line_properties, wall_slopes, wall_intercepts, tolerance=1)
+        fixed_lines, fixed_lines_box, line_mistake_refs = filter.fix_line_mistakes(line_mistakes, line_mistake_refs)
+        line_mistake_points = filter.find_fixed_line_points(line_mistakes, fixed_lines_box)
+        duplicate_line_refs, line_duplicate_points = filter.remove_duplicate_lines(all_lines, line_refs)
 
-    filtered_blockref, filtered_walls, filtered_insert_refs  = maths.Shape_outline(Blockref_Points, all_walls, insert_refs)
+        filtered_blockref, filtered_walls, filtered_insert_refs  = maths.Shape_outline(Blockref_Points, all_walls, insert_refs)
 
-    (post_accepted_blocks, post_accepted_lines, 
-     post_rejected_block, post_rejected_lines) = before_after(fixed_all_blocks, filtered_blockref, all_lines, correct_lines, fixed_lines, wall_slopes, wall_intercepts, all_walls, line_refs)
+        (post_accepted_blocks, post_accepted_lines, 
+        post_rejected_block, post_rejected_lines) = before_after(fixed_all_blocks, filtered_blockref, all_lines, correct_lines, fixed_lines, wall_slopes, wall_intercepts, all_walls, line_refs)
 
-    line_block_connections = filter.link_line_connections(correct_lines, fixed_lines, fixed_all_blocks)
+        line_block_connections = filter.link_line_connections(correct_lines, fixed_lines, fixed_all_blocks)
 
-    final_line_line_connections = filter.fix_line_channel_return(fixed_lines, line_mistake_refs, wall_slopes, wall_intercepts, all_walls, line_line_connections_check, line_line_connections)
+        final_line_line_connections = filter.fix_line_channel_return(fixed_lines, line_mistake_refs, wall_slopes, wall_intercepts, all_walls, line_line_connections_check, line_line_connections)
 
-    line_name, all_fail = validate_categories(final_line_line_connections, line_block_connections)
+        line_name, all_fail = validate_categories(final_line_line_connections, line_block_connections)
 
-    # print(f'These are the second last blocks {final_corrected_blocks}')
-    finals_corrected_blocks = maths.return_error(final_corrected_blocks, mistake_points)
+        # print(f'These are the second last blocks {final_corrected_blocks}')
+        finals_corrected_blocks = maths.return_error(final_corrected_blocks, mistake_points)
 
-    return (doc, on_line_points, all_lines_table, 
-        wall_slope_intercept, filtered_walls, mistake_points, 
-        finals_corrected_blocks, line_mistakes, fixed_lines, final_corrected_refs, 
-        line_mistake_points, line_mistake_refs, duplicate_line_refs, line_duplicate_points,
-        post_accepted_blocks, post_accepted_lines, 
-        post_rejected_block, post_rejected_lines, line_name, all_fail)
+        return (doc, on_line_points, all_lines_table, 
+            wall_slope_intercept, filtered_walls, mistake_points, 
+            finals_corrected_blocks, line_mistakes, fixed_lines, final_corrected_refs, 
+            line_mistake_points, line_mistake_refs, duplicate_line_refs, line_duplicate_points,
+            post_accepted_blocks, post_accepted_lines, 
+            post_rejected_block, post_rejected_lines, line_name, all_fail)
 
 def extract_polyline_points(polyline): #Convert wall points into x and y points 
         if polyline.dxftype() == 'LWPOLYLINE':
@@ -184,11 +186,11 @@ def update_dxf_in_place(filepath, output_filepath):
         if new_x is None or new_y is None:
             fallback = mistake_points[idx]
             new_x, new_y = fallback[1], fallback[2]
-            msp.add_circle(center=(new_x, new_y), radius=50, dxfattribs={"color": 1})
+            msp.add_circle(center=(new_x, new_y), radius=75, dxfattribs={"color": 1})
         else:
             entity.dxf.insert = (new_x, new_y)
             entity.dxf.name = name 
-            msp.add_circle(center=(new_x, new_y), radius=50, dxfattribs={"color": 1})
+            msp.add_circle(center=(new_x, new_y), radius=75, dxfattribs={"color": 1})
 
 
     for idx, line_data in enumerate(fixed_lines):
@@ -201,7 +203,7 @@ def update_dxf_in_place(filepath, output_filepath):
 
     for point in line_mistake_points:
         x, y = point[0], point[1]
-        msp.add_circle(center=(x, y), radius=50, dxfattribs={"color": 1})
+        msp.add_circle(center=(x, y), radius=75, dxfattribs={"color": 1})
 
     for entity in duplicate_line_refs:
         msp.delete_entity(entity)    
@@ -231,4 +233,6 @@ def draw_triangle(msp, x, y):
     point3 = x + displacement * math.cos(3.66519), y + displacement * math.sin(3.66519)   # -150 degrees 
     points = [point1, point2, point3]
     msp.add_lwpolyline(points, close=True, dxfattribs={'layer': 'CORRECTION_HIGHLIGHT', 'color': 1})
+
+    
 

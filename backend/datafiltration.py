@@ -393,8 +393,8 @@ class datafiltration:
                 line_mistakes_check.append([name, x_start, y_start, x_end, y_end, start_line_name, end_line_name])  
                 correct_line_refs.append(lines_not_OCO_refs[idx])  
                 line_line_connections.append([name, start_line_name, end_line_name, x_start, y_start, x_end, y_end])  
-                situation_where.append([name, x_start, y_start, x_s_checker_start, y_s_checker_start, x_e_checker_start, y_e_checker_start,
-                                     x_end, y_end, x_s_checker_end, y_s_checker_end, x_e_checker_end, y_e_checker_end])
+                # situation_where.append([name, x_start, y_start, x_s_checker_start, y_s_checker_start, x_e_checker_start, y_e_checker_start,
+                #                      x_end, y_end, x_s_checker_end, y_s_checker_end, x_e_checker_end, y_e_checker_end])
                 
 
         return line_mistakes, correct_lines, line_mistake_refs, correct_line_refs, line_line_connections, line_line_connections_check
@@ -558,7 +558,7 @@ class datafiltration:
         block_tolerences = self.block_tolerence(blockrefs)
         line_block_connections = [] 
         lines = correct_lines + fixed_lines
-        print(f'This is the amount of lines {len(lines)}')
+      
         for line in lines: 
             name, x_start, y_start, x_end, y_end = line 
             block_name_start = None 
@@ -646,6 +646,9 @@ class datafiltration:
 
             block_tolerences.append([name, x, y, x_tolerence, y_tolerence])
         return block_tolerences   
+    
+
+    
 
 
 

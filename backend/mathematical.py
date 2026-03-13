@@ -50,13 +50,13 @@ class Mathematical:
                 slope_wall, intercept_wall = Mathematical.calc_slope(p1[0], p1[1], p2[0], p2[1])
                 wall_slopes.append(slope_wall)
                 wall_intercepts.append(intercept_wall)  
-                line_properties.append([line_name, slope_wall, intercept_wall, p1[0], p1[1], p2[0], p2[1]])      
+                line_properties.append([line_name, slope_wall, intercept_wall, p1[0], p1[1], p2[0], p2[1]])  
 
         return slopes, y_intercepts, line_properties, wall_slopes, wall_intercepts
 
     @staticmethod
     def calc_slope(x1, y1, x2, y2):
-        if x1 == x2:
+        if abs(x2 - x1) < 0.2:
             slope = None
             c = f'X Intercept {x1}'
         else:
@@ -134,12 +134,12 @@ class Mathematical:
                 if wall_slope is None: 
                     x_intercept = float(wall_intercept.split()[2])
                     x_d = abs(x_intercept - x)
-                    if x_d < 0.5: 
+                    if x_d < 1: 
                         on_channel = 'Yes'
                         break       
                 else: 
                     y_d = abs(y - (wall_slope * x + wall_intercept))
-                    if y_d < 0.5: 
+                    if y_d < 1: 
                         on_channel = 'Yes'
                         break 
 

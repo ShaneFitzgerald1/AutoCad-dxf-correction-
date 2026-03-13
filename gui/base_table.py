@@ -35,9 +35,3 @@ class BaseTable(QTableWidget):
                 self.setItem(row, col, QTableWidgetItem(str(value)))
 
 
-    #     self.headers = headers
-
-    #     self.setMaximumWidth = MAX_WIDTH
-
-    # def change_header_name(self, idx, new_name):
-    #     self.headers[idx] = new_name

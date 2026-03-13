@@ -54,7 +54,7 @@ def name_match_block(blockrefs, lines, actual_type, wall_slopes, wall_intercepts
     valid_insert_names = []
     valid_line_names = []
 
-    # print(f'These are the objects{objects}')
+
     # print(f'Amount of objects {len(objects)}')
 
     for object in objects:
@@ -64,6 +64,7 @@ def name_match_block(blockrefs, lines, actual_type, wall_slopes, wall_intercepts
         if type not in ('INSERT', 'LWPOLYLINE'):
             valid_line_names.append((name, on_channel_outline))
 
+    
     if actual_type == 'INSERT':
         for block in blocks:
             actual_name, x, y, _, on_channel = block
@@ -263,6 +264,8 @@ def validate_categories(line_line_connections, line_block_connections):
     all_fail_cat = mand_fail + quantity_fail + both_fail 
 
     return correct_connections_cat, all_fail_cat
+
+
 
     
 
