@@ -24,6 +24,8 @@ def autocad_points(filepath):
     doc = ezdxf.readfile(filepath)
     msp = doc.modelspace()
     
+    block_length = []
+    blocks = []
     Blockref_Points = []
     all_lines = []
     all_walls = []  
@@ -32,13 +34,23 @@ def autocad_points(filepath):
     block_names = []
     new_names = []
     layers = []
+    offsets = []
+    wall_point_refs = [] 
 
-   
     for insert in msp.query('INSERT'): 
-        insert_refs.append(insert)
-
         blockName = insert.dxf.name
-        block_names.append([blockName])
+        x = round(insert.dxf.insert.x, 2)
+        y = round(insert.dxf.insert.y, 2)
+        block_length.append([blockName, x, y]) 
+
+    blocks_fil = maths.blockcheck(block_length)
+
+    for insert in msp.query('INSERT'): 
+        blockName = insert.dxf.name
+        x = round(insert.dxf.insert.x, 2)
+        y = round(insert.dxf.insert.y, 2) 
+        angle = round(insert.dxf.rotation, 2)
+
         if blockName.startswith('*U'): #Dynamic block
             block = doc.blocks.get(blockName)
             blockRecord = block.block_record
@@ -58,62 +70,120 @@ def autocad_points(filepath):
 
         else: #Non-dynamic standard block
             name = blockName
-            block_names.append([blockName])
+            block_names.append([blockName, x, y])
             block_def = doc.blocks.get(blockName)  # *** NEW: Get block definition for standard blocks ***
 
-        # Original insertion point from the block reference
-        x = round(insert.dxf.insert.x, 2)
-        y = round(insert.dxf.insert.y, 2) 
-        angle = round(insert.dxf.rotation, 2)
-     
         offset_found = False 
         name_error = None 
 
-        for entity in block_def:
-            if entity.dxftype() == 'INSERT':
-                x_offset = entity.dxf.insert.x   #find offset inside block 
-                y_offset = entity.dxf.insert.y
-                new_name = entity.dxf.name        #find 
-                new_names.append([new_name])
-                if x_offset > 0.01 and y_offset > 0.01:
-                    x_final = x + x_offset 
-                    y_final = y + y_offset 
-                    offset_found = True 
-                if new_name != name: 
-                    name_error = True 
-                if new_name == name: 
-                    name_error = None    
-         
-        attrib_data = {}  #reset each iteration
-        if insert.has_attrib:
-            for attrib in insert.attribs:
-                attrib_data[attrib.dxf.tag] = attrib.dxf.text 
-             
-        if offset_found: 
-            Blockref_Points.append([new_name, x_final, y_final, angle, name])
+        bedit_check = len(blocks_fil)
+
+        if bedit_check == 1: 
+            if blockName != blocks_fil[0][0]:
+                continue
+
+            for entity in block_def:
+                if entity.dxftype() == 'INSERT':
+                    x_offset = entity.dxf.insert.x
+                    y_offset = entity.dxf.insert.y
+                    new_name = entity.dxf.name
+                    offsets.append([new_name, x_offset, y_offset, name])
+
+                    if new_name.startswith('*U'):
+                        nested_block = doc.blocks.get(new_name)
+                        nested_record = nested_block.block_record
+                        try:
+                            if xdata := nested_record.get_xdata("AcDbBlockRepBTag"):
+                                for tag in xdata:
+                                    if tag.code == 1005:
+                                        ogHandle = tag.value
+                                        for b in doc.blocks:
+                                            if b.dxf.handle == ogHandle:
+                                                new_name = b.dxf.name
+                        except const.DXFValueError:
+                            pass  
+
+                    new_names.append([new_name])
+                    x_final = round(x + x_offset, 2)
+                    y_final = round(y + y_offset, 2)
+                    if new_name != name:
+                        name_error = True
+                    if new_name == name:
+                        name_error = None
+                    insert_refs.append(entity)  
+                    Blockref_Points.append([new_name, x_final, y_final, angle, name])
+
+
+                elif entity.dxftype() == 'LINE':
+                    line_refs.append(entity)
+                    layer = entity.dxf.layer
+                    start_x = round(x + entity.dxf.start.x, 2)
+                    start_y = round(y + entity.dxf.start.y, 2)
+                    end_x = round(x + entity.dxf.end.x, 2)
+                    end_y = round(y + entity.dxf.end.y, 2)
+                    layers.append([layer])
+                    all_lines.append([layer, start_x, start_y, end_x, end_y, True])
+
+                elif entity.dxftype() == 'LWPOLYLINE':
+                    if entity.dxf.layer == 'CHANNEL OUTLINE':   # add layer filter
+                        wall_point_refs.append(entity)
+                        raw_points = extract_polyline_points(entity)
+                        offset_points = [
+                            [round(x + p[0], 1), round(y + p[1], 1)]
+                            for p in raw_points
+                            if 10 <= x + p[0] <= 300000 and 10 <= y + p[1] <= 300000
+                        ]
+                        if offset_points:   # only append if not empty
+                            all_walls.append(offset_points)
+
 
         else: 
-            Blockref_Points.append([name, x, y, angle, name_error])
+            insert_refs.append(insert)
+            for entity in block_def: #Searching for blocks inside the BEDIT
+                if entity.dxftype() == 'INSERT':
+                    x_offset = entity.dxf.insert.x   #find offset inside block 
+                    y_offset = entity.dxf.insert.y
+                    new_name = entity.dxf.name        #find 
+                    new_names.append([new_name])
+                    if x_offset > 0.01 and y_offset > 0.01:
+                        x_final = x + x_offset 
+                        y_final = y + y_offset 
+                        offset_found = True 
+                    if new_name != name: 
+                        name_error = True 
+                    if new_name == name: 
+                        name_error = None 
+         
+            attrib_data = {}  #reset each iteration
+            if insert.has_attrib:
+                for attrib in insert.attribs:
+                    attrib_data[attrib.dxf.tag] = attrib.dxf.text 
+                
+            if offset_found: 
+                Blockref_Points.append([new_name, x_final, y_final, angle, name])
+            else:     
+                Blockref_Points.append([name, x, y, angle, name_error])  
         
+    if bedit_check != 1: 
+        for line in msp.query('LINE'):
+            line_refs.append(line)
+            layer = line.dxf.layer
+            name = blockName 
+            start_x = round(line.dxf.start.x, 2)
+            start_y = round(line.dxf.start.y, 2)
+            end_x = round(line.dxf.end.x, 2)
+            end_y = round(line.dxf.end.y, 2)
+            layers.append([layer])
+            all_lines.append([layer, start_x, start_y, end_x, end_y, False])    
 
-    # Extract LINE data
-    for line in msp.query('LINE'):
-        line_refs.append(line)
-        layer = line.dxf.layer
-        name = blockName 
-        start_x = round(line.dxf.start.x, 2)
-        start_y = round(line.dxf.start.y, 2)
-        end_x = round(line.dxf.end.x, 2)
-        end_y = round(line.dxf.end.y, 2)
-        layers.append([layer])
-        all_lines.append([layer, start_x, start_y, end_x, end_y])     
+        print(f'These are all the lines {len(all_lines)}') 
 
+        # Extract POLYLINE data 
+        for polyline in msp.query('LWPOLYLINE[layer=="CHANNEL OUTLINE"]'):
+            points = extract_polyline_points(polyline)
+            wall_point_refs.append(polyline)
+            all_walls.append(points)
 
-    
-    # Extract POLYLINE data 
-    for polyline in msp.query('LWPOLYLINE[layer=="CHANNEL OUTLINE"]'):
-        points = extract_polyline_points(polyline)
-        all_walls.append(points)
 
     if len(all_lines) < 1 or len(all_walls) < 1 or len(Blockref_Points) < 1: 
         return None 
@@ -123,12 +193,17 @@ def autocad_points(filepath):
         slopes, y_intercepts, line_properties, wall_slopes, wall_intercepts = maths.slope_values(all_lines, all_walls) 
         wall_slope_intercept = pres.combine_slope_walls(wall_lengths, slopes, y_intercepts)
         (blocks_on_line, mistake_points, final_corrected_blocks,
-        final_corrected_refs, filtered_walls, 
-        correct_blocks, fixed_all_blocks) = filter.On_Channel_Line(Blockref_Points, all_walls, insert_refs, line_properties, tolerance=1, tolerance_2=5)
+        final_corrected_block_refs, filtered_walls, 
+        correct_blocks, fixed_all_blocks, bedit_mistake_points,
+        bedit_corrected_blocks) = filter.On_Channel_Line(Blockref_Points, all_walls, insert_refs, line_properties, tolerance=1, tolerance_2=5)
         on_line_points, all_lines_table = pres.what_line(blocks_on_line, filtered_walls, all_lines, tolerance = 1)
         (line_mistakes, correct_lines, line_mistake_refs, 
         correct_line_refs, line_line_connections, line_line_connections_check) = filter.find_line_error(all_lines, all_walls, line_refs, line_properties, wall_slopes, wall_intercepts, tolerance=1)
         fixed_lines, fixed_lines_box, line_mistake_refs = filter.fix_line_mistakes(line_mistakes, line_mistake_refs)
+
+        (final_fixed_lines, final_correct_lines, 
+         final_fixed_lines_refs, final_correct_line_refs) = filter.filter_offset_lines(fixed_lines, line_mistake_refs, correct_lines, correct_line_refs)
+
         line_mistake_points = filter.find_fixed_line_points(line_mistakes, fixed_lines_box)
         duplicate_line_refs, line_duplicate_points = filter.remove_duplicate_lines(all_lines, line_refs)
 
@@ -142,16 +217,15 @@ def autocad_points(filepath):
         final_line_line_connections = filter.fix_line_channel_return(fixed_lines, line_mistake_refs, wall_slopes, wall_intercepts, all_walls, line_line_connections_check, line_line_connections)
 
         line_name, all_fail = validate_categories(final_line_line_connections, line_block_connections)
-
-        # print(f'These are the second last blocks {final_corrected_blocks}')
         finals_corrected_blocks = maths.return_error(final_corrected_blocks, mistake_points)
 
         return (doc, on_line_points, all_lines_table, 
             wall_slope_intercept, filtered_walls, mistake_points, 
-            finals_corrected_blocks, line_mistakes, fixed_lines, final_corrected_refs, 
-            line_mistake_points, line_mistake_refs, duplicate_line_refs, line_duplicate_points,
+            finals_corrected_blocks, line_mistakes, final_fixed_lines, final_corrected_block_refs, 
+            line_mistake_points, final_fixed_lines_refs, duplicate_line_refs, line_duplicate_points,
             post_accepted_blocks, post_accepted_lines, 
-            post_rejected_block, post_rejected_lines, line_name, all_fail)
+            post_rejected_block, post_rejected_lines, line_name, all_fail, 
+            blocks_fil, bedit_check, fixed_lines, line_mistake_refs, all_walls, wall_point_refs, bedit_mistake_points, bedit_corrected_blocks)
 
 def extract_polyline_points(polyline): #Convert wall points into x and y points 
         if polyline.dxftype() == 'LWPOLYLINE':
@@ -161,7 +235,7 @@ def extract_polyline_points(polyline): #Convert wall points into x and y points
                 y = float(round(point[1], 1))  
                 wall_points.append([x, y])
             return wall_points
-        return []
+        # return []
 
 def update_dxf_in_place(filepath, output_filepath):
     """This function updates the dxf file, function updates Block reference and line positions based on corrections
@@ -169,9 +243,9 @@ def update_dxf_in_place(filepath, output_filepath):
 
     (doc, on_line_points, all_lines_table, 
         wall_slope_intercept, filtered_walls, mistake_points, 
-        corrected_blocks, line_mistakes, fixed_lines, corrected_block_refs, 
-        line_mistake_points, line_mistake_refs, duplicate_line_refs, duplicate_line_points,
-        _, _, _, _, _, _) = autocad_points(filepath)
+        corrected_blocks, line_mistakes, bedit_lines, corrected_block_refs, 
+        line_mistake_points, line_bedit_refs, duplicate_line_refs, duplicate_line_points,
+        _, _, _, _, _, _, blocks_fil, bedit_check, fixed_lines, fixed_line_refs, all_walls, wall_point_refs, _, _) = autocad_points(filepath)
     
     msp = doc.modelspace()
 
@@ -179,39 +253,105 @@ def update_dxf_in_place(filepath, output_filepath):
         correction_layer = doc.layers.new('CORRECTION_HIGHLIGHT')
         correction_layer.color = 1
 
-    for idx, block_data in enumerate(corrected_blocks):
-        name = block_data[0]
-        new_x, new_y = block_data[1], block_data[2]
-        entity = corrected_block_refs[idx]
-        if new_x is None or new_y is None:
-            fallback = mistake_points[idx]
-            new_x, new_y = fallback[1], fallback[2]
-            msp.add_circle(center=(new_x, new_y), radius=75, dxfattribs={"color": 1})
-        else:
-            entity.dxf.insert = (new_x, new_y)
-            entity.dxf.name = name 
-            msp.add_circle(center=(new_x, new_y), radius=75, dxfattribs={"color": 1})
+    if len(blocks_fil) == 1:
+        # For block references
+
+        container_x = blocks_fil[0][1]
+        container_y = blocks_fil[0][2]
+
+        print(f'This is the amount of bedit lines {len(bedit_lines)}')
+
+        # For polylines (channel outline walls)
+        for idx, wall_points in enumerate(all_walls):
+            original_ref = wall_point_refs[idx]
+            world_points = [
+                (p[0], p[1])
+                for p in wall_points
+            ]
+            msp.add_lwpolyline(world_points, close=True, dxfattribs={
+                'layer': original_ref.dxf.layer,
+            })
+
+        for idx, block_data in enumerate(corrected_blocks):
+            name = block_data[0]
+            new_x, new_y = block_data[1], block_data[2]
+            original_ref = corrected_block_refs[idx]
+            if new_x is not None and new_y is not None:
+                new_insert = msp.add_blockref(name, (new_x, new_y), dxfattribs={
+                    'rotation': original_ref.dxf.rotation,
+                    'layer': original_ref.dxf.layer,
+                    'xscale': original_ref.dxf.get('xscale', 1),
+                    'yscale': original_ref.dxf.get('yscale', 1),
+                })
+                for attrib in original_ref.attribs:
+                    attrib_world_x = container_x + attrib.dxf.insert.x
+                    attrib_world_y = container_y + attrib.dxf.insert.y
+                    new_insert.add_attrib(
+                        attrib.dxf.tag,
+                        attrib.dxf.text,
+                        (attrib_world_x, attrib_world_y),
+                        dxfattribs={
+                            'layer': attrib.dxf.layer,
+                            'height': attrib.dxf.get('height', 1.0),
+                            'rotation': attrib.dxf.get('rotation', 0),
+                        }
+                    )
+
+        # For lines
+        for idx, line_data in enumerate(bedit_lines):
+            new_x_start, new_y_start = line_data[1], line_data[2]
+            new_x_end, new_y_end = line_data[3], line_data[4]
+            original_ref = line_bedit_refs[idx]
+            copied = original_ref.copy()
+            msp.add_entity(copied)
+            copied.dxf.start = (new_x_start, new_y_start)
+            copied.dxf.end = (new_x_end, new_y_end)
+
+        for point in line_mistake_points:
+            x, y = point[0], point[1]
+            msp.add_circle(center=(x, y), radius=75, dxfattribs={"color": 1}) 
 
 
-    for idx, line_data in enumerate(fixed_lines):
-        name = line_data[0]
-        new_x_start, new_y_start = line_data[1], line_data[2]
-        new_x_end, new_y_end = line_data[3], line_data[4]
-        entity = line_mistake_refs[idx]
-        entity.dxf.start = (new_x_start, new_y_start)
-        entity.dxf.end = (new_x_end, new_y_end)
+        # Delete the container INSERT
+        for insert in msp.query('INSERT'):
+            if insert.dxf.name == blocks_fil[0][0]:
+                msp.delete_entity(insert)
+                break
+    
+    else: 
+        for idx, block_data in enumerate(corrected_blocks):
+            name = block_data[0]
+            new_x, new_y = block_data[1], block_data[2]
+            entity = corrected_block_refs[idx]
+            if new_x is None or new_y is None:
+                fallback = mistake_points[idx]
+                new_x, new_y = fallback[1], fallback[2]
+                # msp.add_circle(center=(new_x, new_y), radius=75, dxfattribs={"color": 1})
+            else:
+                entity.dxf.insert = (new_x, new_y)
+                entity.dxf.name = name 
+                # msp.add_circle(center=(new_x, new_y), radius=75, dxfattribs={"color": 1})
 
-    for point in line_mistake_points:
-        x, y = point[0], point[1]
-        msp.add_circle(center=(x, y), radius=75, dxfattribs={"color": 1})
 
-    for entity in duplicate_line_refs:
-        msp.delete_entity(entity)    
+        for idx, line_data in enumerate(fixed_lines):
+            name = line_data[0]
+            new_x_start, new_y_start = line_data[1], line_data[2]
+            new_x_end, new_y_end = line_data[3], line_data[4]
+            entity = fixed_line_refs[idx]
+            entity.dxf.start = (new_x_start, new_y_start)
+            entity.dxf.end = (new_x_end, new_y_end)
 
-    for line in duplicate_line_points: 
-        x_s, y_s, x_e, y_e = line 
-        draw_triangle(msp, x_s, y_s)
-        draw_triangle(msp, x_e, y_e)
+        for point in line_mistake_points:
+            x, y = point[0], point[1]
+            msp.add_circle(center=(x, y), radius=75, dxfattribs={"color": 1})
+
+        for entity in duplicate_line_refs:
+            msp.delete_entity(entity)    
+
+        for line in duplicate_line_points: 
+            x_s, y_s, x_e, y_e = line 
+            draw_triangle(msp, x_s, y_s)
+            draw_triangle(msp, x_e, y_e)
 
     doc.saveas(output_filepath)
 

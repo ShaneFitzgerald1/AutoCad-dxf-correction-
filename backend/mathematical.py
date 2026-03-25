@@ -16,7 +16,7 @@ class Mathematical:
     def wall_len(all_lines):
         wall_lengths = []
         for line in all_lines:
-            name, x_start, y_start, x_end, y_end = line
+            name, x_start, y_start, x_end, y_end, offset = line
             delta_x = x_start - x_end
             delta_y = y_start - y_end
             distance = math.sqrt((delta_x)**2 + (delta_y)**2)
@@ -36,7 +36,7 @@ class Mathematical:
         wall_intercepts = []
 
         for line in all_lines: 
-            line_name, x_start, y_start, x_end, y_end = line  
+            line_name, x_start, y_start, x_end, y_end, mistake = line  
             line_slopes, line_intercepts = Mathematical.calc_slope(x_start, y_start, x_end, y_end)
             slopes.append(line_slopes)
             y_intercepts.append(line_intercepts)
@@ -56,7 +56,7 @@ class Mathematical:
 
     @staticmethod
     def calc_slope(x1, y1, x2, y2):
-        if abs(x2 - x1) < 0.2:
+        if abs(x2 - x1) < 0.3:
             slope = None
             c = f'X Intercept {x1}'
         else:
@@ -64,6 +64,18 @@ class Mathematical:
             c = y1 - (slope * x1)
         return slope, c
     
+
+    @staticmethod
+    def blockcheck(block_names): 
+        block_checks = []
+        for block in block_names: 
+            name, x, y = block 
+            if 10 <= x <= 300000 and 10 <= y <= 300000: 
+                block_checks.append([name, x, y])
+
+        return block_checks         
+
+
     @staticmethod 
     def Shape_outline(Blockref_Points, all_walls, insert_refs):
         #This function Filters the Block References and Points to ensure any unwanted Points are not picked up 
@@ -156,7 +168,7 @@ class Mathematical:
 
 
         for idx, line in enumerate(lines): 
-            name, x_start, y_start, x_end, y_end = line
+            name, x_start, y_start, x_end, y_end, offset = line
 
             min_x = min(x for wall in all_walls for x, y in wall) #finding the boundaries of the shape 
             min_y = min(y for wall in all_walls for x,y in wall)
@@ -166,7 +178,7 @@ class Mathematical:
             # Check boundaries ONCE (no loop needed)
             if (x_start < (min_x - 0.2) or x_start > (max_x + 0.2) or y_start < (min_y- 0.2) or y_start > (max_y + 0.2) or
                 x_end < (min_x - 0.2) or x_end > (max_x + 0.2) or y_end < (min_y - 0.2) or y_end > (max_y + 0.2)):
-                lines_not_OCO.append([name, x_start, y_start, x_end, y_end])
+                lines_not_OCO.append([name, x_start, y_start, x_end, y_end, offset])
                 lines_not_OCO_refs.append(line_refs[idx])
                 lines_cl.append([name, x_start, y_start, x_end, y_end, 'No'])
                 
@@ -194,11 +206,11 @@ class Mathematical:
                         break
 
             if on_channel_outline: 
-                lines_OCO.append([name, x_start, y_start, x_end, y_end])
+                lines_OCO.append([name, x_start, y_start, x_end, y_end, offset])
                 lines_OCO_refs.append(line_refs[idx]) 
                 lines_cl.append([name, x_start, y_start, x_end, y_end, 'Yes'])
             else: 
-                lines_not_OCO.append([name, x_start, y_start, x_end, y_end]) 
+                lines_not_OCO.append([name, x_start, y_start, x_end, y_end, offset]) 
                 lines_not_OCO_refs.append(line_refs[idx])   
                 lines_cl.append([name, x_start, y_start, x_end, y_end, 'No'])     
 

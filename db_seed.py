@@ -130,7 +130,7 @@ category_line_data = [
     {'category': 'TRUSS BRACING', 'allowed_connections': ('TRUSS LINE' , 'HEADER', 'WALL LINE', 'CILL LINE', 'BRACE LINE', 'SHS TRUSS LINE'), 'double_connection': 'Yes'},
     {'category': 'SHS TRUSS LINE', 'allowed_connections': ('TRUSS LINE' , 'HEADER', 'WALL LINE', 'CILL LINE', 'BRACE LINE', 'SHS TRUSS LINE'), 'double_connection': 'No'},
     {'category': 'HEADER', 'allowed_connections': ('CP', 'STUD'), 'double_connection': 'Yes'},
-    {'category': 'CILL LINE', 'allowed_connections': 'STUD', 'double_connection': 'Yes' },
+    {'category': 'CILL LINE', 'allowed_connections': ('STUD','OTHER'), 'double_connection': 'Yes' },
     {'category': 'WALL LINE', 'allowed_connections': ('CP', 'STUD'), 'double_connection': 'Yes' },
     {'category': 'BRACE LINE', 'allowed_connections': ('CP', 'STUD'), 'double_connection': 'Yes'}   
 ]

@@ -31,7 +31,7 @@ class presentation:
                 on_line_points.append([name, x, y, angle, wall, wall_type, on_line, mistake, 'No'])
 
         for line in all_lines:
-            name, x_start, y_start, x_end, y_end = line
+            name, x_start, y_start, x_end, y_end, offset = line
 
             if any(abs(x_start - wall_x) <= tolerance for wall_x in wall_x_coords):  # Check if line is on a vertical wall (x_start == x_end and that x is a wall x)
                     all_lines_table.append([name, x_start, y_start, x_end, y_end, 'Yes'])
@@ -41,3 +41,10 @@ class presentation:
                 all_lines_table.append([name, x_start, y_start, x_end, y_end, 'No'])  
 
         return on_line_points, all_lines_table
+    
+    # @staticmethod
+    # def filter_bedit_presentation(bedit_check, corrected_blocks, mistake_points): 
+    #     """This function is purely for presentation reasons, we dont want to present all blocks in the gui, just ones where there are actual mistakes
+    #     the fact module is inside a block and this has been fixed is highlighted in the gui summary"""
+    #     if bedit_check == 1: #we know all blocks inside one module we will skip blocks with different be
+

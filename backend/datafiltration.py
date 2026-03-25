@@ -22,7 +22,7 @@ class datafiltration:
         line_duplicates_points = []
         
         for idx, line in enumerate(all_lines):
-            name, x_start, y_start, x_end, y_end = line
+            name, x_start, y_start, x_end, y_end, offset = line
             
             # Normalise direction so A->B and B->A are treated as the same line
             coords = tuple(sorted([(x_start, y_start), (x_end, y_end)]))
@@ -177,8 +177,9 @@ class datafiltration:
         final_correct_blocks, final_corrected_blocks, final_corrected_refs, final_mistake_blocks = datafiltration.filter_name_errors(correct_blocks, correct_block_refs, corrected_blocks, corrected_block_refs, mistake_points)  
 
         all_blocks_correct_test = final_correct_blocks + final_corrected_blocks
+
         
-        return blocks_on_line, final_mistake_blocks, final_corrected_blocks, final_corrected_refs, filtered_walls, correct_blocks, all_blocks_correct_test
+        return blocks_on_line, final_mistake_blocks, final_corrected_blocks, final_corrected_refs, filtered_walls, correct_blocks, all_blocks_correct_test, mistake_points, corrected_blocks 
     
     @staticmethod
     def filter_name_errors(correct_blocks, correct_block_refs, corrected_blocks, corrected_block_refs, mistake_points):
@@ -192,6 +193,7 @@ class datafiltration:
 
         for idx, block in enumerate(correct_blocks):
             name, x, y, angle, name_error = block
+
             if name_error is not None:
                 final_corrected_blocks.append(block)
                 final_corrected_refs.append(correct_block_refs[idx])
@@ -201,6 +203,7 @@ class datafiltration:
                 final_correct_refs.append(correct_block_refs[idx])  
             
         final_mistake_blocks = mistake_blocks_name + mistake_points
+
         return final_correct_blocks, final_corrected_blocks, final_corrected_refs, final_mistake_blocks
     
     @staticmethod 
@@ -221,9 +224,12 @@ class datafiltration:
         line_mistakes_check = []
         situation_where = []
 
+        print(f'These are the line properties {line_properties}')
+
         lines_OCO, lines_not_OCO, lines_OCO_refs, lines_not_OCO_refs, _  = maths.Chanel_check_line(wall_slopes, wall_intercepts, all_lines, all_walls, line_refs)
 
         correct_lines.extend(lines_OCO)
+        correct_line_refs.extend(lines_OCO_refs)
 
         for idx, line in enumerate(lines_not_OCO):  #Each start and end ponit of the line are checked against the slope and intercepts of the checker lines 
             name = line[0]                
@@ -231,6 +237,7 @@ class datafiltration:
             y_start = line[2]
             x_end = line[3]
             y_end = line[4]
+            offset = line[5]
 
             start_matches = False 
             end_matches = False 
@@ -389,14 +396,13 @@ class datafiltration:
 
                 #make sperate list for mistakes if name = name in function below than continue 
             if start_matches and end_matches: 
-                correct_lines.append([name, x_start, y_start, x_end, y_end]) 
+                correct_lines.append([name, x_start, y_start, x_end, y_end, offset]) 
                 line_mistakes_check.append([name, x_start, y_start, x_end, y_end, start_line_name, end_line_name])  
                 correct_line_refs.append(lines_not_OCO_refs[idx])  
                 line_line_connections.append([name, start_line_name, end_line_name, x_start, y_start, x_end, y_end])  
                 # situation_where.append([name, x_start, y_start, x_s_checker_start, y_s_checker_start, x_e_checker_start, y_e_checker_start,
                 #                      x_end, y_end, x_s_checker_end, y_s_checker_end, x_e_checker_end, y_e_checker_end])
                 
-
         return line_mistakes, correct_lines, line_mistake_refs, correct_line_refs, line_line_connections, line_line_connections_check
     
     
@@ -405,6 +411,9 @@ class datafiltration:
         """This function fixes any errors recored in the find_line_error function, mathamtically vertical lines are account for in all scenarios 
            If both lines have slopes, functions are solved using simealtaneous equations 
            The function returns a list of fixed lines with their name, position, layer, and colour. """
+        
+
+        # print(f'These are the line mistakes {line_mistakes}')
         
         fixed_lines = []
         fixed_lines_box = []
@@ -427,7 +436,7 @@ class datafiltration:
                 new_x_end = x_end
                 new_y_end = y_end
 
-                fixed_lines.append([name, new_x_start, new_y_start, new_x_end, new_y_end]) #Append these results so they are no longer checked
+                fixed_lines.append([name, new_x_start, new_y_start, new_x_end, new_y_end, False]) #Append these results so they are no longer checked
                 fixed_lines_box.append([name, new_x_start, new_y_start, new_x_end, new_y_end, closest_start_slope, closest_start_intercept, closest_end_slope, closest_end_intercept])
                 continue
 
@@ -475,10 +484,35 @@ class datafiltration:
                     if new_x_end is None: 
                         new_x_end, new_y_end = x_end, y_end
 
-            fixed_lines.append([name, new_x_start, new_y_start, new_x_end, new_y_end])
+            fixed_lines.append([name, new_x_start, new_y_start, new_x_end, new_y_end, False])
             fixed_lines_box.append([name, new_x_start, new_y_start, new_x_end, new_y_end, closest_start_slope, closest_start_intercept, closest_end_slope, closest_end_intercept])
-            
+
         return fixed_lines, fixed_lines_box, line_mistake_refs
+    
+    @staticmethod
+    def filter_offset_lines(fixed_lines, line_mistake_refs, correct_lines, correct_line_refs): 
+        final_correct_lines = []
+        final_fixed_lines = []
+        final_fixed_lines_refs = []
+        final_correct_line_refs = []
+
+        final_fixed_lines.extend(fixed_lines)
+        final_fixed_lines_refs.extend(line_mistake_refs)
+
+        for idx, line in enumerate(correct_lines): 
+            name, x_start, y_start, x_end, y_end, offset = line 
+            if offset: 
+                final_fixed_lines.append(line)
+                final_fixed_lines_refs.append(correct_line_refs[idx])
+
+            else: 
+                final_correct_lines.append(line)   
+                final_correct_line_refs.append(correct_line_refs[idx])
+
+        return final_fixed_lines, final_correct_lines, final_fixed_lines_refs, final_correct_line_refs            
+
+
+
     
     @staticmethod
     def fix_line_channel_return(fixed_lines, line_mistake_refs, wall_slopes, wall_intercepts, all_walls, line_line_connections_check, line_line_connections):
@@ -501,8 +535,6 @@ class datafiltration:
                 if not line_is_OCO: 
                     ll_connections.append([name, start_line_name, end_line_name, x_start_c, y_start_c, x_end_c, y_end_c])
 
-        # print(f'final ll conections {ll_connections}')
-        # print(f'The amount of lines after check {len(ll_connections)}')
         final_line_line_connections = line_line_connections + ll_connections 
         return final_line_line_connections        
 
@@ -548,7 +580,7 @@ class datafiltration:
                     
             if cl_ed_slope is None and cl_ed_intercept is None: 
                 line_mistake_points.append([x_end_f, y_end_f])
-                none_error.append([x_end_f, y_end_f])
+                none_error.append([x_end_f, y_end_f])    
 
         return line_mistake_points  
     
@@ -560,7 +592,7 @@ class datafiltration:
         lines = correct_lines + fixed_lines
       
         for line in lines: 
-            name, x_start, y_start, x_end, y_end = line 
+            name, x_start, y_start, x_end, y_end, offset = line 
             block_name_start = None 
             block_name_end = None  
          

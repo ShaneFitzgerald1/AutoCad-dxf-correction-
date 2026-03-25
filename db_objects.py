@@ -100,11 +100,19 @@ def name_match_block(blockrefs, lines, actual_type, wall_slopes, wall_intercepts
             for name, on_channel_outline in valid_line_names:
                 if actual_l_name.upper() == name.upper():
                     line_matched = True
-                    if on_channel == 'Yes' and on_channel_outline == 'Yes':
-                        channel_verified = True
-                    if on_channel == 'No' and on_channel_outline == 'No':
-                        channel_verified = True
-                    break
+                elif 'TRUSS LINE' in actual_l_name.upper():
+                    parts = actual_l_name.upper().split()
+                    if parts[0].isdigit() and 100 <= int(parts[0]) <= 999:
+                        line_matched = True
+
+        
+                if on_channel == 'Yes' and on_channel_outline == 'Yes':
+                    channel_verified = True
+                if on_channel == 'No' and on_channel_outline == 'No':
+                    channel_verified = True
+
+                if line_matched: 
+                    break 
 
             if line_matched and channel_verified:
                 accepted_line_names.append(actual_l_name)
@@ -138,25 +146,25 @@ def before_after(fixed_all_blocks, blockrefs, lines, correct_lines, fixed_lines,
     post_accepted_block, post_rejected_block = name_match_block(fixed_all_blocks, all_correct_lines, 'INSERT', wall_slopes, wall_intercepts, all_walls, line_refs)
     post_accepted_line, post_rejected_lines = name_match_block(fixed_all_blocks, all_correct_lines, 'LINE', wall_slopes, wall_intercepts, all_walls, line_refs)
 
-    print(f'There are initially {len(initial_accepted_blocks)} Accepted Blocks and {len(initial_rejected_blocks)} Rejected Blocks from the object DataBase  ')
-    for block in initial_rejected_blocks: 
-        name, x, y, rejection_reason = block 
-        print(f'Block: {(name), (x), (y)}: {rejection_reason}')
+    # print(f'There are initially {len(initial_accepted_blocks)} Accepted Blocks and {len(initial_rejected_blocks)} Rejected Blocks from the object DataBase  ')
+    # for block in initial_rejected_blocks: 
+    #     name, x, y, rejection_reason = block 
+    #     print(f'Block: {(name), (x), (y)}: {rejection_reason}')
 
-    print(f'There are initially {len(initial_accepted_line)} Accepted Lines and {len(initial_rejected_lines)} Rejected Lines from the object DataBase')
-    for line in initial_rejected_lines: 
-        name, xs, ys, xe, ye, rejection_reason = line 
-        print(f'Line: {(name), (xs), (ys), (xe), (ye)}: {rejection_reason}')
+    # print(f'There are initially {len(initial_accepted_line)} Accepted Lines and {len(initial_rejected_lines)} Rejected Lines from the object DataBase')
+    # for line in initial_rejected_lines: 
+    #     name, xs, ys, xe, ye, rejection_reason = line 
+    #     print(f'Line: {(name), (xs), (ys), (xe), (ye)}: {rejection_reason}')
 
-    print(f'Post correction there are {len(post_accepted_block)} Accepted Blocks and {len(post_rejected_block)} Rejected Blocks from the obejct Database ')    
-    for block in post_rejected_block: 
-        name, x, y, rejection_reason = block 
-        print(f'Block: {(name), (x), (y)}: {rejection_reason}')
+    # print(f'Post correction there are {len(post_accepted_block)} Accepted Blocks and {len(post_rejected_block)} Rejected Blocks from the obejct Database ')    
+    # for block in post_rejected_block: 
+    #     name, x, y, rejection_reason = block 
+    #     print(f'Block: {(name), (x), (y)}: {rejection_reason}')
 
-    print(f'Post correction there are {len(post_accepted_line)} Accepted Lines and {len(post_rejected_lines)} Rejected Lines from the object Database')
-    for line in post_rejected_lines: 
-        name, xs, ys, xe, ye, rejection_reason = line 
-        print(f'Line: {(name), (xs), (ys), (xe), (ye)}: {rejection_reason}')   
+    # print(f'Post correction there are {len(post_accepted_line)} Accepted Lines and {len(post_rejected_lines)} Rejected Lines from the object Database')
+    # for line in post_rejected_lines: 
+    #     name, xs, ys, xe, ye, rejection_reason = line 
+    #     print(f'Line: {(name), (xs), (ys), (xe), (ye)}: {rejection_reason}')   
 
 
     return post_accepted_block, post_accepted_line, post_rejected_block, post_rejected_lines 
@@ -174,7 +182,6 @@ def categories_sorter(line_connections):
         line_end_category = get_category(line_end_entity)
 
         category_list.append([line_name, line_category, line_start_category, line_end_category, x_start, y_start, x_end, y_end])
-
     return category_list     
 
     
@@ -187,6 +194,12 @@ def get_category(line_name):
         object_name, type, category, on_channel_outline = object 
         if line_name.upper() == object_name.upper(): 
             return category 
+    
+    if 'TRUSS LINE' in line_name.upper():
+            parts = line_name.upper().split()
+            if parts[0].isdigit() and 100 <= int(parts[0]) <= 999:
+                return 'TRUSS LINE'
+                
     return None 
 
 
@@ -196,6 +209,8 @@ def validate_categories(line_line_connections, line_block_connections):
     ll_connections = categories_sorter(line_line_connections)
     lb_connections = categories_sorter(line_block_connections)
     all_connections = ll_connections + lb_connections
+ 
+    # print(f'These are all connections {all_connections}')
     correct_connections_cat = []
     mand_fail = []
     quantity_fail = []
@@ -254,12 +269,12 @@ def validate_categories(line_line_connections, line_block_connections):
         if not safe_connections and untrue_quantity_connections: 
             both_fail.append([line_name, x_start, y_start, line_start_category, x_end, y_end, line_end_category, 'Line start/end is incorrect or does not end on the required object.'])
 
-    print(f'{len(correct_connections_cat)} Lines were approved by the Category DataBase')
-    print(f'{len(mand_fail)} Lines were disapproved due to lines ending on incorrect lines/objects')
-    print(f'These are the mand fail lines {mand_fail}')
-    print(f'{len(quantity_fail)} Lines were disapproved due to lines not ending on lines/objects')
-    print(f'{len(both_fail)} Lines were disapproved due to lines not ending on lines/objects and ending on incorrect object')
-    print(f'Both failed lines is {both_fail}')
+    # print(f'{len(correct_connections_cat)} Lines were approved by the Category DataBase')
+    # print(f'{len(mand_fail)} Lines were disapproved due to lines ending on incorrect lines/objects')
+    # print(f'These are the mand fail lines {mand_fail}')
+    # print(f'{len(quantity_fail)} Lines were disapproved due to lines not ending on lines/objects')
+    # print(f'{len(both_fail)} Lines were disapproved due to lines not ending on lines/objects and ending on incorrect object')
+    # print(f'Both failed lines is {both_fail}')
 
     all_fail_cat = mand_fail + quantity_fail + both_fail 
 

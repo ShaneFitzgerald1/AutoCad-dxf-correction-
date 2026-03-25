@@ -149,16 +149,28 @@ class MyWindow(QMainWindow):
         block_ref_headers = ['Name', 'x', 'y']
         line_headers = ['Name', 'x start', 'y start', 'x end', 'y end']
 
-        if len(self.mistake_points) > 0: 
+        # print(f'These are the mistake points {self.mistake_points}')
+        if self.bed_check == 1: 
+            if len(self.bedit_mistake_points) > 0: 
+                vbox1 = LabeledTableWidget('Insert Block Reference Errors Located at Points:',block_ref_headers,BaseTable.RED)
+                vbox2 = LabeledTableWidget('Block Reference Errors Fixed to Points:',block_ref_headers, BaseTable.GREEN)
+                self.table5 = vbox1.table
+                self.table6 = vbox2.table
+                grid.addLayout(vbox1, 0, 0, 1, 1)
+                grid.addLayout(vbox2, 0, 1, 1, 1)
+                self.table5.populate(self.bedit_mistake_points)
+                self.table6.populate(self.bedit_corrected_blocks)
 
-            vbox1 = LabeledTableWidget('Insert Block Reference Errors Located at Points:',block_ref_headers,BaseTable.RED)
-            vbox2 = LabeledTableWidget('Block Reference Errors Fixed to Points:',block_ref_headers, BaseTable.GREEN)
-            self.table5 = vbox1.table
-            self.table6 = vbox2.table
-            grid.addLayout(vbox1, 0, 0, 1, 1)
-            grid.addLayout(vbox2, 0, 1, 1, 1)
-            self.table5.populate(self.mistake_points)
-            self.table6.populate(self.corrected_blocks)
+        else:
+            if len(self.mistake_points) > 0: 
+                vbox1 = LabeledTableWidget('Insert Block Reference Errors Located at Points:',block_ref_headers,BaseTable.RED)
+                vbox2 = LabeledTableWidget('Block Reference Errors Fixed to Points:',block_ref_headers, BaseTable.GREEN)
+                self.table5 = vbox1.table
+                self.table6 = vbox2.table
+                grid.addLayout(vbox1, 0, 0, 1, 1)
+                grid.addLayout(vbox2, 0, 1, 1, 1)
+                self.table5.populate(self.mistake_points)
+                self.table6.populate(self.corrected_blocks)
        
         if len(self.line_mistakes) > 0: 
             vbox3 = LabeledTableWidget('Insert Line Errors Located at Points: ',line_headers, BaseTable.RED)
@@ -169,6 +181,7 @@ class MyWindow(QMainWindow):
             grid.addLayout(vbox4, 1, 1, 1, 1)
             self.table7.populate(self.line_mistakes)
             self.table8.populate(self.fixed_lines)
+
     
         tab3.setLayout(grid)
         self.tabs.addTab(tab3, "Error Fixation") #Add tab2 to tab Widget
@@ -282,26 +295,58 @@ class MyWindow(QMainWindow):
         QtitLabel.setAlignment(Qt.AlignCenter)
         QtitLabel.setFont(QFont('Inter', 12, QFont.Bold))
 
-        if len(self.mistake_points) > 0: 
-            QLabel1 = QLabel(f'There were {len(self.on_line_points) - len(self.mistake_points)} Block(s) Accepted {self.check} and {len(self.mistake_points)} Block(s) Rejected {self.cross} by the Geometry Engine')
-            QLabel1.setAlignment(Qt.AlignCenter)
-            QLabel1.setFont(QFont('Inter', 10))
+        if self.bed_check == 1: ### if all blocks are inside a module 
 
-            if len(self.mistake_points) == 1: #Getting the language correct 
-                QLabel2 = QLabel(f'{len(self.corrected_blocks)} Block was corrected {self.warning} by the Geometry Engine')
-            else:
-                QLabel2 = QLabel(f'{len(self.corrected_blocks)} Blocks were corrected {self.warning} by the Geometry Engine')
+            Qbeditlabel = QLabel(f'{self.warning} All contents in the Module are inside a single Block Reference, Error has been fixed {self.warning}')
+            Qbeditlabel.setAlignment(Qt.AlignCenter)
+            Qbeditlabel.setFont(QFont('Inter', 11, QFont.Bold))
+            Qbeditlabel.setStyleSheet('color: red;')
+            vbox1.addWidget(Qbeditlabel)
 
-            QLabel2.setAlignment(Qt.AlignCenter)
-            QLabel2.setFont(QFont('Inter', 10))
-            vboxgeo1.addWidget(QLabel1)
-            vboxgeo1.addWidget(QLabel2)
+            if len(self.bedit_mistake_points) > 0: 
+                QLabel1 = QLabel(f'There were {len(self.on_line_points) - len(self.bedit_mistake_points)} Block(s) Accepted {self.check} and {len(self.bedit_mistake_points)} Block(s) Rejected {self.cross} by the Geometry Engine')
+                QLabel1.setAlignment(Qt.AlignCenter)
+                QLabel1.setFont(QFont('Inter', 10))
+                vboxgeo1.addWidget(QLabel1)
 
-        if len(self.mistake_points) < 1: 
-            QLabel1 = QLabel(f'All {len(self.on_line_points)} Blocks were accepted by the Geometry Engine {self.check}')
-            QLabel1.setAlignment(Qt.AlignCenter)
-            QLabel1.setFont(QFont('Inter', 10))
-            vboxgeo1.addWidget(QLabel1)
+                if len(self.bedit_mistake_points) == 1: #Getting the language correct 
+                    QLabel2 = QLabel(f'{len(self.bedit_corrected_blocks)} Block was corrected {self.warning} by the Geometry Engine')
+                else:
+                    QLabel2 = QLabel(f'{len(self.bedit_corrected_blocks)} Blocks were corrected {self.warning} by the Geometry Engine')
+
+                QLabel2.setAlignment(Qt.AlignCenter)
+                QLabel2.setFont(QFont('Inter', 10))
+                vboxgeo1.addWidget(QLabel2)
+
+            if len(self.bedit_mistake_points) < 1: 
+                QLabel1 = QLabel(f'All {len(self.on_line_points)} Blocks were accepted by the Geometry Engine {self.check}')
+                QLabel1.setAlignment(Qt.AlignCenter)
+                QLabel1.setFont(QFont('Inter', 10))
+                vboxgeo1.addWidget(QLabel1)
+
+        else: # if the file is normal 
+            if len(self.mistake_points) > 0: 
+                QLabel1 = QLabel(f'There were {len(self.on_line_points) - len(self.mistake_points)} Block(s) Accepted {self.check} and {len(self.mistake_points)} Block(s) Rejected {self.cross} by the Geometry Engine')
+                QLabel1.setAlignment(Qt.AlignCenter)
+                QLabel1.setFont(QFont('Inter', 10))
+
+                if len(self.mistake_points) == 1: #Getting the language correct 
+                    QLabel2 = QLabel(f'{len(self.corrected_blocks)} Block was corrected {self.warning} by the Geometry Engine')
+                else:
+                    QLabel2 = QLabel(f'{len(self.corrected_blocks)} Blocks were corrected {self.warning} by the Geometry Engine')
+
+                QLabel2.setAlignment(Qt.AlignCenter)
+                QLabel2.setFont(QFont('Inter', 10))
+                vboxgeo1.addWidget(QLabel1)
+                vboxgeo1.addWidget(QLabel2)
+
+            if len(self.mistake_points) < 1: 
+                QLabel1 = QLabel(f'All {len(self.on_line_points)} Blocks were accepted by the Geometry Engine {self.check}')
+                QLabel1.setAlignment(Qt.AlignCenter)
+                QLabel1.setFont(QFont('Inter', 10))
+                vboxgeo1.addWidget(QLabel1)
+
+            ####
 
         if len(self.line_mistakes) > 0: 
             QLabel3 = QLabel(f'There were {len(self.all_lines_table) - len(self.line_mistakes)} Line(s) Accepted {self.check} and {len(self.line_mistakes)} Line(s) Rejected {self.cross} by the Geometry Engine')
@@ -472,10 +517,12 @@ class MyWindow(QMainWindow):
             self.all_lines_table, self.wall_slope_intercept,
             self.filtered_walls, self.mistake_points,
             self.corrected_blocks, self.line_mistakes,
-            self.fixed_lines, _, _, _, _, self.line_duplicate_points,
+            self.bedit_lines, _, _, _, _, self.line_duplicate_points,
             self.post_accepted_blocks, self.post_accepted_lines,
             self.post_rejected_blocks, self.post_rejected_lines,
-            self.line_name, self.all_fail) = result
+            self.line_name, self.all_fail, self.blocks_fil, self.bed_check, 
+            self.fixed_lines, self.fixed_line_refs, self.all_walls, self.wall_point_refs, self.bedit_mistake_points, 
+            self.bedit_corrected_blocks) = result
 
             self.create_results_tab()
 

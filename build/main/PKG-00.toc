@@ -1,0 +1,88 @@
+('C:\\Users\\Shane Fitzgerald\\OneDrive - MJH Structural '
+ 'Engineers\\Desktop\\Python_Etabs\\PYQT_Interface\\dxf.testing\\build\\main\\main.pkg',
+ {'BINARY': True,
+  'DATA': True,
+  'EXECUTABLE': True,
+  'EXTENSION': True,
+  'PYMODULE': True,
+  'PYSOURCE': True,
+  'PYZ': False,
+  'SPLASH': True,
+  'SYMLINK': False},
+ [('pyi-contents-directory _internal', '', 'OPTION'),
+  ('PYZ-00.pyz',
+   'C:\\Users\\Shane Fitzgerald\\OneDrive - MJH Structural '
+   'Engineers\\Desktop\\Python_Etabs\\PYQT_Interface\\dxf.testing\\build\\main\\PYZ-00.pyz',
+   'PYZ'),
+  ('struct',
+   'C:\\Users\\Shane Fitzgerald\\OneDrive - MJH Structural '
+   'Engineers\\Desktop\\Python_Etabs\\PYQT_Interface\\dxf.testing\\build\\main\\localpycs\\struct.pyc',
+   'PYMODULE'),
+  ('pyimod01_archive',
+   'C:\\Users\\Shane Fitzgerald\\OneDrive - MJH Structural '
+   'Engineers\\Desktop\\Python_Etabs\\PYQT_Interface\\dxf.testing\\build\\main\\localpycs\\pyimod01_archive.pyc',
+   'PYMODULE'),
+  ('pyimod02_importers',
+   'C:\\Users\\Shane Fitzgerald\\OneDrive - MJH Structural '
+   'Engineers\\Desktop\\Python_Etabs\\PYQT_Interface\\dxf.testing\\build\\main\\localpycs\\pyimod02_importers.pyc',
+   'PYMODULE'),
+  ('pyimod03_ctypes',
+   'C:\\Users\\Shane Fitzgerald\\OneDrive - MJH Structural '
+   'Engineers\\Desktop\\Python_Etabs\\PYQT_Interface\\dxf.testing\\build\\main\\localpycs\\pyimod03_ctypes.pyc',
+   'PYMODULE'),
+  ('pyimod04_pywin32',
+   'C:\\Users\\Shane Fitzgerald\\OneDrive - MJH Structural '
+   'Engineers\\Desktop\\Python_Etabs\\PYQT_Interface\\dxf.testing\\build\\main\\localpycs\\pyimod04_pywin32.pyc',
+   'PYMODULE'),
+  ('pyiboot01_bootstrap',
+   'C:\\Users\\Shane '
+   'Fitzgerald\\AppData\\Local\\Programs\\Python\\Python314\\Lib\\site-packages\\PyInstaller\\loader\\pyiboot01_bootstrap.py',
+   'PYSOURCE'),
+  ('pyi_rth_setuptools',
+   'C:\\Users\\Shane '
+   'Fitzgerald\\AppData\\Local\\Programs\\Python\\Python314\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks\\pyi_rth_setuptools.py',
+   'PYSOURCE'),
+  ('pyi_rth_pkgutil',
+   'C:\\Users\\Shane '
+   'Fitzgerald\\AppData\\Local\\Programs\\Python\\Python314\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks\\pyi_rth_pkgutil.py',
+   'PYSOURCE'),
+  ('pyi_rth_multiprocessing',
+   'C:\\Users\\Shane '
+   'Fitzgerald\\AppData\\Local\\Programs\\Python\\Python314\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks\\pyi_rth_multiprocessing.py',
+   'PYSOURCE'),
+  ('pyi_rth_inspect',
+   'C:\\Users\\Shane '
+   'Fitzgerald\\AppData\\Local\\Programs\\Python\\Python314\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks\\pyi_rth_inspect.py',
+   'PYSOURCE'),
+  ('pyi_rth_mplconfig',
+   'C:\\Users\\Shane '
+   'Fitzgerald\\AppData\\Local\\Programs\\Python\\Python314\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks\\pyi_rth_mplconfig.py',
+   'PYSOURCE'),
+  ('pyi_rth_pyqt5',
+   'C:\\Users\\Shane '
+   'Fitzgerald\\AppData\\Local\\Programs\\Python\\Python314\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks\\pyi_rth_pyqt5.py',
+   'PYSOURCE'),
+  ('pyi_rth_traitlets',
+   'C:\\Users\\Shane '
+   'Fitzgerald\\AppData\\Local\\Programs\\Python\\Python314\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\rthooks\\pyi_rth_traitlets.py',
+   'PYSOURCE'),
+  ('pyi_rth_pkgres',
+   'C:\\Users\\Shane '
+   'Fitzgerald\\AppData\\Local\\Programs\\Python\\Python314\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks\\pyi_rth_pkgres.py',
+   'PYSOURCE'),
+  ('pyi_rth__tkinter',
+   'C:\\Users\\Shane '
+   'Fitzgerald\\AppData\\Local\\Programs\\Python\\Python314\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks\\pyi_rth__tkinter.py',
+   'PYSOURCE'),
+  ('main',
+   'C:\\Users\\Shane Fitzgerald\\OneDrive - MJH Structural '
+   'Engineers\\Desktop\\Python_Etabs\\PYQT_Interface\\dxf.testing\\main.py',
+   'PYSOURCE')],
+ 'python314.dll',
+ True,
+ False,
+ False,
+ [],
+ None,
+ None,
+ None)
